@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jornada Didática — Regressão Linear com Moderação</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="container">
+
+  <header class="widget-header">
+    <div class="breadcrumb">Mestrado e Doutorado em Administração · MTPQI</div>
+    <h1>Jornada Didática — Regressão Linear</h1>
+    <div class="subtitle">Cinco estágios para construir, interpretar e diagnosticar modelos de regressão múltipla com moderação. Cada estágio é um widget interativo independente. Os dados ilustrativos vêm pré-carregados (N = 180), mas você pode subir seu próprio CSV em qualquer etapa.</div>
+  </header>
+
+  <div class="intro-block">
+    <h2>Como funciona</h2>
+    <p>A regressão linear costuma ser apresentada como caixa-preta. Aqui, ela é montada peça por peça: você vê os β nascerem, o R² subir, os VIFs reagirem e os pressupostos serem testados em tempo real. A sequência abaixo é a ordem recomendada, mas cada widget é autocontido — sinta-se livre para pular.</p>
+  </div>
+
+  <div class="journey-grid">
+
+    <a href="01-correlacoes.html" class="journey-card">
+      <div class="stage-num">ESTÁGIO I</div>
+      <h3>Correlações</h3>
+      <p>Antes da regressão, a paisagem. Matriz de correlações de Pearson com heatmap interativo, scatter sob demanda e teste de significância de cada r.</p>
+    </a>
+
+    <a href="02-regressao-simples.html" class="journey-card">
+      <div class="stage-num">ESTÁGIO II</div>
+      <h3>Regressão Simples</h3>
+      <p>Uma VI, uma VD, uma reta. Veja o intercepto, a inclinação, o R² e a banda de confiança da regressão. Base para tudo que vem depois.</p>
+    </a>
+
+    <a href="03-regressao-multipla.html" class="journey-card">
+      <div class="stage-num">ESTÁGIO III</div>
+      <h3>Regressão Múltipla</h3>
+      <p>O coração da jornada. Selecione preditores um a um e acompanhe os β, EP, t, p, R², ΔR² e VIFs mudando ao vivo. Compare modelos aninhados.</p>
+    </a>
+
+    <a href="04-moderacao.html" class="journey-card">
+      <div class="stage-num">ESTÁGIO IV</div>
+      <h3>Moderação</h3>
+      <p>Termo de interação centralizado, teste do β5, e gráfico de simple slopes em três níveis de W (–1 DP, média, +1 DP). Quando W amplifica o efeito de X em Y.</p>
+    </a>
+
+    <a href="05-pressupostos.html" class="journey-card">
+      <div class="stage-num">ESTÁGIO V</div>
+      <h3>Pressupostos</h3>
+      <p>Diagnóstico completo: normalidade (Jarque-Bera + QQ-plot), homocedasticidade (Breusch-Pagan + resíduos vs ajustados), independência (Durbin-Watson), multicolinearidade (VIF) e outliers (Cook's D).</p>
+    </a>
+
+  </div>
+
+  <hr class="soft">
+
+  <div class="panel">
+    <h3 class="panel-title">Sobre o banco pré-carregado</h3>
+    <p>Os <strong>180 casos</strong> foram gerados a partir de um modelo populacional conhecido (os β verdadeiros estão documentados no acompanhamento). N foi calculado como o dobro do mínimo de Cohen (1988): <span class="mono">N ≥ 50 + 8k</span>, com k = 5 preditores por modelo, totalizando 90 — multiplicado por dois.</p>
+    <p class="muted mt-12">Variáveis: <span class="mono">VI1, VI2, VI3</span> (independentes), <span class="mono">W1</span> (moderadora), <span class="mono">VD1, VD2</span> (dependentes). W1 amplifica VI1→VD1 e VI2→VD2. Todos os pressupostos estão respeitados por construção.</p>
+  </div>
+
+  <footer class="widget-footer">
+    <div class="glyph">✦ ✦ ✦</div>
+    <div>Material didático · Pós-Graduação em Administração · 2026</div>
+  </footer>
+
+</div>
+</body>
+</html>
