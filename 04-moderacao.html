@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/dados.js"></script>
 <script src="assets/stats.js"></script>
+<script src="assets/widgets-common.js"></script>
 </head>
 <body>
 <div class="container">
@@ -14,13 +15,13 @@
   <header class="widget-header">
     <a href="index.html" class="home-link">← Jornada</a>
     <div class="breadcrumb">Estágio IV · de V</div>
-    <h1>Moderação — Quando W amplifica o efeito</h1>
-    <div class="subtitle">Selecione o preditor focal X, a moderadora W e o desfecho Y. O widget centraliza X e W (boa prática para reduzir colinearidade espúria), cria o termo de interação X×W e mostra o gráfico de <em>simple slopes</em> em três níveis de W (–1 DP, média, +1 DP).</div>
+    <h1>Moderação — Efeito de Interação</h1>
+    <div class="subtitle">A moderadora W muda a inclinação do efeito de X sobre Y. As <em>simple slopes</em> mostram a relação em três níveis de W (–1 DP, média, +1 DP). Aqui usamos a régua de f² específica para moderação proposta por <span class="ref-cite" title="Aguinis, H., Beaty, J. C., Boik, R. J., & Pierce, C. A. (2005). Effect size and power in assessing moderating effects of categorical variables using multiple regression: A 30-year review. Journal of Applied Psychology, 90(1), 94–107.">Aguinis et al. (2005)</span>, que é mais sensível que a de Cohen (1988).</div>
   </header>
 
   <div class="panel">
     <h3 class="panel-title">Dados</h3>
-    <div class="grid-2" style="grid-template-columns: 1fr 1fr;">
+    <div class="grid-equal-2">
       <div>
         <label class="control-label">Fonte ativa</label>
         <div id="data-source" class="mono" style="font-size: 13px; color: var(--ink-soft);">Banco pré-carregado (N = 180)</div>
@@ -35,58 +36,64 @@
   <div class="grid-2">
     <div>
       <div class="panel">
-        <h3 class="panel-title">Configuração do Modelo</h3>
+        <h3 class="panel-title">Variáveis</h3>
         <div class="control-group">
-          <label class="control-label">Preditor focal (X)</label>
+          <label class="control-label">X (preditor)</label>
           <select id="x-select"></select>
         </div>
         <div class="control-group">
-          <label class="control-label">Moderadora (W)</label>
+          <label class="control-label">W (moderadora)</label>
           <select id="w-select"></select>
         </div>
         <div class="control-group">
-          <label class="control-label">Variável dependente (Y)</label>
+          <label class="control-label">Y (resposta)</label>
           <select id="y-select"></select>
         </div>
-        <div class="control-group">
-          <label class="control-label">Controles (opcionais)</label>
-          <div class="checkbox-list" id="controls-list"></div>
+        <div class="upload-zone" style="margin-top: 10px;">
+          <label style="color: var(--gold-deep);">⚠ Centralização automática</label>
+          <div class="muted" style="font-size: 12px;">X e W são centralizados na média antes de gerar o termo de interação X×W. Isso reduz a multicolinearidade entre o termo de interação e os efeitos principais (Aiken & West, 1991).</div>
         </div>
       </div>
 
       <div class="panel">
-        <h3 class="panel-title">Diagnóstico da Interação</h3>
-        <div id="interaction-kpis"></div>
+        <h3 class="panel-title">Equação estimada</h3>
+        <div id="equation" class="mono" style="font-size: 14px; padding: 10px 0; line-height: 1.7;"></div>
+        <div id="kpis"></div>
+        <div id="ruler-container"></div>
       </div>
     </div>
 
     <div class="panel">
       <h3 class="panel-title">Simple Slopes</h3>
-      <div class="panel-subtitle">Inclinação de X sobre Y em três níveis de W: –1 DP (baixo), média (0) e +1 DP (alto). Quando as três linhas têm inclinações diferentes, há moderação.</div>
+      <div class="panel-subtitle">Inclinação de Y ~ X em três valores de W: –1 DP, média, +1 DP.</div>
       <div id="slopes-container"></div>
-      <div id="slopes-table" class="mt-12"></div>
+      <div id="slopes-legend"></div>
     </div>
   </div>
 
   <div class="panel">
-    <h3 class="panel-title">Coeficientes do Modelo Completo</h3>
-    <div class="panel-subtitle">Modelo: Y ~ X (centralizada) + W (centralizada) + controles + X×W. O termo de interação é o teste-chave.</div>
+    <h3 class="panel-title">Coeficientes (com X e W centralizados)</h3>
     <table class="coef-table">
       <thead>
         <tr><th>Termo</th><th>β</th><th>EP</th><th>t</th><th>p</th><th>IC 95% inf</th><th>IC 95% sup</th></tr>
       </thead>
       <tbody id="coef-tbody"></tbody>
     </table>
+    <div id="interp-box"></div>
+    <div id="apa-container"></div>
   </div>
 
   <div class="panel">
-    <h3 class="panel-title">Interpretação</h3>
-    <div id="interp-content"></div>
+    <h3 class="panel-title">Comparação de modelos: efeitos principais vs. moderação</h3>
+    <div class="panel-subtitle">O incremento de R² ao adicionar o termo de interação revela se há moderação.</div>
+    <div id="compare-models"></div>
   </div>
+
+  <div id="quiz-container"></div>
 
   <footer class="widget-footer">
     <div class="glyph">✦ ✦ ✦ ✦</div>
-    <div>Estágio IV de V</div>
+    <div>Estágio IV de V · <a href="referencias.html">Referências</a></div>
   </footer>
 
 </div>
@@ -96,245 +103,262 @@ let DATA = window.BANCO_180;
 let ALL_VARS = ['VI1','VI2','VI3','W1','VD1','VD2'];
 
 function populateSelects(){
-  const xSel = document.getElementById('x-select');
-  const wSel = document.getElementById('w-select');
-  const ySel = document.getElementById('y-select');
-  [xSel, wSel, ySel].forEach(s => s.innerHTML = '');
-
-  if(DATA === window.BANCO_180){
-    ['VI1','VI2','VI3'].forEach(v => xSel.innerHTML += `<option value="${v}">${v}</option>`);
-    ['W1','VI1','VI2','VI3'].forEach(v => wSel.innerHTML += `<option value="${v}">${v}</option>`);
-    ['VD1','VD2'].forEach(v => ySel.innerHTML += `<option value="${v}">${v}</option>`);
-    xSel.value = 'VI1'; wSel.value = 'W1'; ySel.value = 'VD1';
-  } else {
-    ALL_VARS.forEach(v => {
-      xSel.innerHTML += `<option value="${v}">${v}</option>`;
-      wSel.innerHTML += `<option value="${v}">${v}</option>`;
-      ySel.innerHTML += `<option value="${v}">${v}</option>`;
-    });
-  }
-  populateControls();
-}
-
-function populateControls(){
-  const x = document.getElementById('x-select').value;
-  const w = document.getElementById('w-select').value;
-  const y = document.getElementById('y-select').value;
-  const controlsEl = document.getElementById('controls-list');
-  controlsEl.innerHTML = '';
-  const available = (DATA === window.BANCO_180 ? ['VI1','VI2','VI3','W1'] : ALL_VARS).filter(v => v !== x && v !== w && v !== y);
-  available.forEach(v => {
-    const defChecked = (DATA === window.BANCO_180 && ((x === 'VI1' && v === 'VI2') || (x === 'VI1' && v === 'VI3') || (x === 'VI2' && v === 'VI1') || (x === 'VI2' && v === 'VI3'))) ? 'checked' : '';
-    controlsEl.innerHTML += `<label><input type="checkbox" value="${v}" ${defChecked} onchange="compute()"><span>${v}</span></label>`;
-  });
+  const xS = document.getElementById('x-select');
+  const wS = document.getElementById('w-select');
+  const yS = document.getElementById('y-select');
+  xS.innerHTML=''; wS.innerHTML=''; yS.innerHTML='';
+  const isDefault = (DATA === window.BANCO_180);
+  const xOpts = isDefault ? ['VI1','VI2','VI3'] : ALL_VARS;
+  const wOpts = isDefault ? ['W1'] : ALL_VARS;
+  const yOpts = isDefault ? ['VD1','VD2'] : ALL_VARS;
+  xOpts.forEach(v => xS.innerHTML += `<option value="${v}">${v}</option>`);
+  wOpts.forEach(v => wS.innerHTML += `<option value="${v}">${v}</option>`);
+  yOpts.forEach(v => yS.innerHTML += `<option value="${v}">${v}</option>`);
+  if(isDefault){ xS.value='VI1'; wS.value='W1'; yS.value='VD1'; }
 }
 
 function compute(){
-  const xV = document.getElementById('x-select').value;
-  const wV = document.getElementById('w-select').value;
-  const yV = document.getElementById('y-select').value;
-  if(xV === wV || xV === yV || wV === yV){
-    document.getElementById('coef-tbody').innerHTML = `<tr><td colspan="7" class="badge bad">Selecione variáveis diferentes para X, W e Y.</td></tr>`;
+  const xVar = document.getElementById('x-select').value;
+  const wVar = document.getElementById('w-select').value;
+  const yVar = document.getElementById('y-select').value;
+  if(!xVar || !wVar || !yVar) return;
+  if(xVar===wVar || xVar===yVar || wVar===yVar){
+    document.getElementById('equation').innerHTML = '<span style="color: var(--bad)">⚠ X, W e Y devem ser variáveis distintas.</span>';
     return;
   }
+  const x = DATA.map(r => r[xVar]);
+  const w = DATA.map(r => r[wVar]);
+  const y = DATA.map(r => r[yVar]);
+  const xc = Stats.center(x), wc = Stats.center(w);
+  const xw = xc.map((v,i) => v*wc[i]);
+  // Modelo com interação
+  const Xint = x.map((_,i) => [xc[i], wc[i], xw[i]]);
+  const m = Stats.ols(Xint, y);
+  // Modelo sem interação (efeitos principais)
+  const Xmain = x.map((_,i) => [xc[i], wc[i]]);
+  const mMain = Stats.ols(Xmain, y);
+  if(m.error || mMain.error){ document.getElementById('equation').innerHTML = `<span style="color: var(--bad)">Erro: ${m.error || mMain.error}</span>`; return; }
+  const dR2 = m.r2 - mMain.r2;
+  const f2int = Stats.f2Increment(m.r2, mMain.r2);
 
-  const controls = Array.from(document.querySelectorAll('#controls-list input:checked')).map(i => i.value);
+  const b0 = m.beta[0], bx = m.beta[1], bw = m.beta[2], bxw = m.beta[3];
+  const fmt = v => (v>=0?'+ ':'– ') + Math.abs(v).toFixed(3).replace('.',',');
+  document.getElementById('equation').innerHTML =
+    `<span style="color: var(--gold)">${yVar}</span> = ${b0.toFixed(3).replace('.',',')}<br>
+     ${fmt(bx)} · <span style="color: var(--gold)">${xVar}<sub>c</sub></span>
+     ${fmt(bw)} · <span style="color: var(--gold)">${wVar}<sub>c</sub></span>
+     ${fmt(bxw)} · <span style="color: var(--gold)">${xVar}<sub>c</sub>×${wVar}<sub>c</sub></span>`;
 
-  const x = DATA.map(r => r[xV]);
-  const w = DATA.map(r => r[wV]);
-  const y = DATA.map(r => r[yV]);
-  const xc = Stats.center(x);
-  const wc = Stats.center(w);
-  const xw = xc.map((v,i) => v * wc[i]);
-
-  // Monta X
-  const ctrlVecs = controls.map(c => DATA.map(r => r[c]).map((v,i,arr) => v - Stats.mean(arr)));
-  const Xmat = xc.map((_, i) => {
-    const row = [xc[i], wc[i]];
-    ctrlVecs.forEach(vec => row.push(vec[i]));
-    row.push(xw[i]); // último: interação
-    return row;
-  });
-  const termNames = [`${xV} (c)`, `${wV} (c)`].concat(controls.map(c => `${c} (c)`)).concat([`${xV}×${wV}`]);
-
-  const m = Stats.ols(Xmat, y);
-  if(m.error){ document.getElementById('coef-tbody').innerHTML = `<tr><td colspan="7" class="badge bad">${m.error}</td></tr>`; return; }
-
-  // Coef table
-  const names = ['Intercepto'].concat(termNames);
-  let tb = '';
-  for(let i=0;i<m.beta.length;i++){
-    const isInteraction = i === m.beta.length - 1;
-    tb += `<tr class="${isInteraction ? 'interaction' : ''}"><td>${names[i]}</td>
-      <td>${Stats.fmt(m.beta[i],4).replace('.',',')}</td>
-      <td>${Stats.fmt(m.se[i],4).replace('.',',')}</td>
-      <td>${Stats.fmt(m.t[i],3).replace('.',',')}</td>
-      <td>${Stats.fmtP(m.p[i])} <span class="sig-stars">${Stats.stars(m.p[i])}</span></td>
-      <td>${Stats.fmt(m.ciLow[i],3).replace('.',',')}</td>
-      <td>${Stats.fmt(m.ciHigh[i],3).replace('.',',')}</td>
-    </tr>`;
-  }
-  document.getElementById('coef-tbody').innerHTML = tb;
-
-  // KPIs da interação
-  const idxInt = m.beta.length - 1;
-  const betaInt = m.beta[idxInt];
-  const pInt = m.p[idxInt];
-  const sigInt = pInt < 0.05;
-  document.getElementById('interaction-kpis').innerHTML = `
-    <div class="kpi-grid" style="grid-template-columns: 1fr 1fr;">
-      <div class="kpi ${sigInt ? 'highlight' : ''}">
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi highlight">
         <div class="kpi-label">β interação</div>
-        <div class="kpi-value">${Stats.fmt(betaInt, 3).replace('.',',')}</div>
-        <div class="kpi-sub">${Stats.stars(pInt) || '(não sig.)'}</div>
+        <div class="kpi-value">${Stats.fmtBr(bxw, 3)}</div>
+        <div class="kpi-sub">p = ${Stats.fmtP(m.p[3])} ${Stats.stars(m.p[3])}</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">p (interação)</div>
-        <div class="kpi-value">${Stats.fmtP(pInt)}</div>
-        <div class="kpi-sub">${sigInt ? '✓ moderação' : '✗ sem moderação'}</div>
+        <div class="kpi-label">ΔR² (interação)</div>
+        <div class="kpi-value">${Stats.fmtBr(dR2, 3)}</div>
+        <div class="kpi-sub">${(dR2*100).toFixed(2).replace('.',',')}%</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">R² modelo</div>
-        <div class="kpi-value">${Stats.fmt(m.r2,3).replace('.',',')}</div>
-        <div class="kpi-sub">R²ₐⱼ = ${Stats.fmt(m.r2adj,3).replace('.',',')}</div>
+        <div class="kpi-label">f² interação</div>
+        <div class="kpi-value">${Stats.fmtBr(f2int, 4)}</div>
+        <div class="kpi-sub">${Stats.classify(f2int, 'f2_mod')} (Aguinis)</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">F modelo</div>
-        <div class="kpi-value">${Stats.fmt(m.f,2).replace('.',',')}</div>
-        <div class="kpi-sub">p = ${Stats.fmtP(m.fp)}</div>
+        <div class="kpi-label">R² total</div>
+        <div class="kpi-value">${Stats.fmtBr(m.r2, 3)}</div>
       </div>
     </div>
   `;
 
-  // Simple slopes
-  drawSimpleSlopes(x, w, y, m, xV, wV, yV, controls, ctrlVecs);
+  // Régua dupla: f² interação pelo critério Cohen e pelo critério Aguinis
+  let rulers = WC.renderEffectRuler(f2int, 'f2_mod', {label: 'f² da interação · escala Aguinis et al. (2005)', ref: 'Aguinis, Beaty, Boik & Pierce, 2005'});
+  rulers += WC.renderEffectRuler(f2int, 'f2', {label: 'f² da interação · escala Cohen (1988) — referência clássica para comparação', ref: 'Cohen, 1988'});
+  document.getElementById('ruler-container').innerHTML = rulers +
+    `<div class="apa-note" style="margin-top: 4px; border-radius: 6px; border: 1px dashed var(--gold-soft); background: #fcf5e7; padding: 10px 14px; font-size: 12px;">
+      <strong>Nota importante:</strong> Aguinis et al. (2005) revisaram 30 anos de estudos em management e encontraram <strong>mediana de f² da interação ≈ 0,002</strong> — bem abaixo dos cutoffs de Cohen (1988). Por isso, em moderação, um f² de 0,01 já costuma ser considerado relevante. Não desanime se sua interação não for "grande" pela régua de Cohen.
+    </div>`;
+
+  // Tabela de coeficientes
+  const terms = ['Intercepto', `${xVar} (centr.)`, `${wVar} (centr.)`, `${xVar}×${wVar} (interação)`];
+  let tb = '';
+  for(let i=0;i<4;i++){
+    const rowClass = i===3 ? 'interaction' : '';
+    tb += `<tr class="${rowClass}"><td>${terms[i]}</td>
+      <td>${Stats.fmtBr(m.beta[i],4)}</td>
+      <td>${Stats.fmtBr(m.se[i],4)}</td>
+      <td>${Stats.fmtBr(m.t[i],3)}</td>
+      <td>${Stats.fmtP(m.p[i])} <span class="sig-stars">${Stats.stars(m.p[i])}</span></td>
+      <td>${Stats.fmtBr(m.ciLow[i],3)}</td>
+      <td>${Stats.fmtBr(m.ciHigh[i],3)}</td>
+    </tr>`;
+  }
+  document.getElementById('coef-tbody').innerHTML = tb;
 
   // Interpretação
-  const dirInt = betaInt > 0 ? 'amplifica' : 'atenua';
+  const sigInt = m.p[3] < 0.05;
   let interp = '';
   if(sigInt){
-    interp = `<p>Há <strong>moderação significativa</strong>: a interação <strong>${xV}×${wV}</strong> tem β = ${Stats.fmt(betaInt,3).replace('.',',')} (p ${Stats.fmtP(pInt).replace('< ','&lt; ')}).
-              <strong>${wV}</strong> ${dirInt} o efeito de <strong>${xV}</strong> sobre <strong>${yV}</strong>.</p>
-              <p>Concretamente: quando ${wV} está alto (+1 DP), uma unidade de ${xV} produz uma mudança ${betaInt > 0 ? 'maior' : 'menor'} em ${yV} do que quando ${wV} está baixo (–1 DP). Confira o gráfico ao lado: as três retas têm inclinações diferentes — isso é a assinatura visual da moderação.</p>`;
+    const dir = bxw > 0 ? 'amplifica' : 'atenua';
+    interp = `<p>A interação <strong>${xVar}×${wVar}</strong> é <strong>estatisticamente significativa</strong>
+              (β = ${bxw.toFixed(3).replace('.',',')}, p = ${Stats.fmtP(m.p[3])}). Isso indica que
+              <strong>${wVar}</strong> <em>${dir}</em> o efeito de <strong>${xVar}</strong> sobre <strong>${yVar}</strong>.</p>
+              <p>O incremento de R² ao adicionar a interação foi de <strong>${Stats.fmtBr(dR2,3)}</strong>
+              (f² = ${Stats.fmtBr(f2int,4)}, ${Stats.classify(f2int,'f2_mod').toLowerCase()} segundo Aguinis et al., 2005).</p>`;
   } else {
-    interp = `<p class="muted">A interação <strong>${xV}×${wV}</strong> não atingiu significância (β = ${Stats.fmt(betaInt,3).replace('.',',')}, p = ${Stats.fmtP(pInt)}). Não há evidência de que ${wV} altere o efeito de ${xV} sobre ${yV} nesta amostra.</p>`;
+    interp = `<p class="muted">A interação <strong>${xVar}×${wVar}</strong> não atingiu significância
+              (β = ${bxw.toFixed(3).replace('.',',')}, p = ${Stats.fmtP(m.p[3])}). Não há evidência estatística de moderação nesta amostra.</p>`;
   }
-  // Aviso de centralização
-  interp += `<div class="interp-box mt-12"><strong>Nota técnica:</strong> ${xV} e ${wV} foram centralizadas (subtraída a média) antes do cálculo da interação. Isso reduz a colinearidade espúria entre os termos principais e o termo X×W, tornando os β principais interpretáveis como efeitos no nível médio da outra variável.</div>`;
-  document.getElementById('interp-content').innerHTML = interp;
+  document.getElementById('interp-box').innerHTML = `<div class="interp-box">${interp}</div>`;
+
+  // APA
+  document.getElementById('apa-container').innerHTML = WC.renderAPABox(WC.apaModeracao(yVar, xVar, wVar, m, dR2),
+    { note: 'A escala de Aguinis et al. (2005) é recomendada para efeitos de moderação. A mediana de f² da interação em pesquisa aplicada gira em torno de 0,002.' });
+
+  // Comparação dois modelos
+  document.getElementById('compare-models').innerHTML = `
+    <div class="compare-grid">
+      <div class="compare-col">
+        <h4>Modelo 1 — Apenas efeitos principais</h4>
+        <div class="mono" style="font-size: 13px;">${yVar} ~ ${xVar}<sub>c</sub> + ${wVar}<sub>c</sub></div>
+        <div class="kpi-grid mt-12" style="grid-template-columns: 1fr 1fr;">
+          <div class="kpi"><div class="kpi-label">R²</div><div class="kpi-value" style="font-size: 18px;">${Stats.fmtBr(mMain.r2,3)}</div></div>
+          <div class="kpi"><div class="kpi-label">R²ₐⱼ</div><div class="kpi-value" style="font-size: 18px;">${Stats.fmtBr(mMain.r2adj,3)}</div></div>
+        </div>
+      </div>
+      <div class="compare-col">
+        <h4>Modelo 2 — Com termo de interação</h4>
+        <div class="mono" style="font-size: 13px;">${yVar} ~ ${xVar}<sub>c</sub> + ${wVar}<sub>c</sub> + ${xVar}<sub>c</sub>×${wVar}<sub>c</sub></div>
+        <div class="kpi-grid mt-12" style="grid-template-columns: 1fr 1fr;">
+          <div class="kpi highlight"><div class="kpi-label">R²</div><div class="kpi-value" style="font-size: 18px;">${Stats.fmtBr(m.r2,3)}</div></div>
+          <div class="kpi"><div class="kpi-label">R²ₐⱼ</div><div class="kpi-value" style="font-size: 18px;">${Stats.fmtBr(m.r2adj,3)}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="interp-box mt-12">
+      Adicionar o termo de interação <strong>${sigInt ? 'aumentou significativamente' : 'não aumentou significativamente'}</strong> a variância explicada:
+      ΔR² = ${Stats.fmtBr(dR2,3)} (${(dR2*100).toFixed(2).replace('.',',')}%), f² = ${Stats.fmtBr(f2int,4)}.
+    </div>
+  `;
+
+  drawSlopes(x, w, y, b0, bx, bw, bxw, xVar, wVar, yVar);
 }
 
-function drawSimpleSlopes(x, w, y, m, xV, wV, yV, controls, ctrlVecs){
-  // β: [const, X_c, W_c, ctrl1_c, ctrl2_c, ..., X_c × W_c]
-  const b0 = m.beta[0];
-  const bX = m.beta[1];
-  const bW = m.beta[2];
-  const numCtrls = controls.length;
-  const bInt = m.beta[3 + numCtrls];
-  // Em x centralizada (xc) e w centralizada (wc), com controles centralizados em 0:
-  // y_hat ≈ b0 + bX*xc + bW*wc + bInt*xc*wc
-  // Para xc dado, valor de y_hat = b0 + (bX + bInt*wc)*xc + bW*wc
-  const mx = Stats.mean(x);
-  const dx = Stats.std(x);
-  const mw = Stats.mean(w);
-  const dw = Stats.std(w);
+function drawSlopes(x, w, y, b0, bx, bw, bxw, xVar, wVar, yVar){
+  const sdW = Stats.std(w);
+  // Como o intercepto é em xc=0, wc=0, plotamos X centralizado vs Y previsto
+  const xc = Stats.center(x);
+  const xMin = Math.min(...xc), xMax = Math.max(...xc);
+  const xPad = (xMax-xMin)*0.05;
+  const xLo = xMin-xPad, xHi = xMax+xPad;
+  // Três níveis de W (centralizada)
+  const wLevels = [-sdW, 0, sdW];
+  const wLabels = [`–1 DP (${wVar} baixo)`, `Média (${wVar} médio)`, `+1 DP (${wVar} alto)`];
+  const colors = ['#2c5f8d', '#b08d57', '#a04444'];
 
-  const xLo = mx - 2*dx, xHi = mx + 2*dx;
-  const wLevels = [-1, 0, 1];
-  const wLabels = ['–1 DP (W baixo)', 'Média (W médio)', '+1 DP (W alto)'];
-  const wColors = ['#2c5f8d', '#8a8a8a', '#b08d57'];
-
-  // y limits — obter a partir dos extremos
-  let yMin = Infinity, yMax = -Infinity;
-  const lines = [];
-  wLevels.forEach((dpLevel, i) => {
-    const wc = dpLevel * dw;
-    const xc1 = xLo - mx, xc2 = xHi - mx;
-    const y1 = b0 + bX*xc1 + bW*wc + bInt*xc1*wc;
-    const y2 = b0 + bX*xc2 + bW*wc + bInt*xc2*wc;
-    yMin = Math.min(yMin, y1, y2); yMax = Math.max(yMax, y1, y2);
-    const slope = bX + bInt*wc;
-    lines.push({x1: xLo, y1, x2: xHi, y2, label: wLabels[i], color: wColors[i], slope, dp: dpLevel});
+  // Calcular Y previsto em cada nível
+  const lines = wLevels.map(wL => {
+    const yLo = b0 + bx*xLo + bw*wL + bxw*xLo*wL;
+    const yHi = b0 + bx*xHi + bw*wL + bxw*xHi*wL;
+    return { wL, yLo, yHi };
   });
-  // adicionar dados (background pontos)
-  const yPts = y;
-  yMin = Math.min(yMin, Math.min(...yPts)); yMax = Math.max(yMax, Math.max(...yPts));
-  const ypad = (yMax-yMin)*0.08;
-  const yLo = yMin - ypad, yHi = yMax + ypad;
-  const xpad = (xHi-xLo)*0.05;
-  const xLoP = xLo - xpad, xHiP = xHi + xpad;
+  let yAll = []; lines.forEach(l => { yAll.push(l.yLo); yAll.push(l.yHi); });
+  const yMinAll = Math.min(...yAll), yMaxAll = Math.max(...yAll);
+  const yPad = (yMaxAll-yMinAll)*0.10;
+  const yLo2 = yMinAll-yPad, yHi2 = yMaxAll+yPad;
 
-  const wd = 520, ht = 380, pad = {top: 40, right: 18, bottom: 50, left: 56};
-  const innerW = wd - pad.left - pad.right;
-  const innerH = ht - pad.top - pad.bottom;
-  const sx = v => pad.left + (v - xLoP)/(xHiP - xLoP) * innerW;
-  const sy = v => pad.top + (1 - (v - yLo)/(yHi - yLo)) * innerH;
+  const w_ = 480, h = 340, pad = {top: 16, right: 20, bottom: 50, left: 56};
+  const innerW = w_-pad.left-pad.right, innerH = h-pad.top-pad.bottom;
+  const sx = v => pad.left + (v-xLo)/(xHi-xLo) * innerW;
+  const sy = v => pad.top + (1-(v-yLo2)/(yHi2-yLo2)) * innerH;
 
-  let svg = `<svg class="chart" viewBox="0 0 ${wd} ${ht}">`;
+  let svg = `<svg class="chart" viewBox="0 0 ${w_} ${h}">`;
   for(let k=0;k<=5;k++){
-    const xv = xLoP + (xHiP-xLoP)*k/5, yv = yLo + (yHi-yLo)*k/5;
-    svg += `<line class="grid-line" x1="${sx(xv)}" y1="${pad.top}" x2="${sx(xv)}" y2="${ht-pad.bottom}"/>`;
-    svg += `<line class="grid-line" x1="${pad.left}" y1="${sy(yv)}" x2="${wd-pad.right}" y2="${sy(yv)}"/>`;
-    svg += `<text class="axis-text" x="${sx(xv)}" y="${ht-pad.bottom+16}" text-anchor="middle">${xv.toFixed(1)}</text>`;
+    const xv = xLo+(xHi-xLo)*k/5, yv = yLo2+(yHi2-yLo2)*k/5;
+    svg += `<line class="grid-line" x1="${sx(xv)}" y1="${pad.top}" x2="${sx(xv)}" y2="${h-pad.bottom}"/>`;
+    svg += `<line class="grid-line" x1="${pad.left}" y1="${sy(yv)}" x2="${w_-pad.right}" y2="${sy(yv)}"/>`;
+    svg += `<text class="axis-text" x="${sx(xv)}" y="${h-pad.bottom+16}" text-anchor="middle">${xv.toFixed(2)}</text>`;
     svg += `<text class="axis-text" x="${pad.left-6}" y="${sy(yv)+4}" text-anchor="end">${yv.toFixed(1)}</text>`;
   }
-  svg += `<line class="axis-line" x1="${pad.left}" y1="${ht-pad.bottom}" x2="${wd-pad.right}" y2="${ht-pad.bottom}"/>`;
-  svg += `<line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${ht-pad.bottom}"/>`;
-  svg += `<text class="axis-title" x="${pad.left+innerW/2}" y="${ht-10}" text-anchor="middle">${xV}</text>`;
-  svg += `<text class="axis-title" x="${-pad.top-innerH/2}" y="14" text-anchor="middle" transform="rotate(-90)">${yV}</text>`;
-
-  // pontos cinza
-  for(let i=0;i<x.length;i++) svg += `<circle cx="${sx(x[i])}" cy="${sy(y[i])}" r="2.8" fill="#bbb" fill-opacity="0.45"/>`;
-
-  // linhas (com legenda no topo)
-  let legendX = pad.left + 6;
-  lines.forEach(l => {
-    svg += `<line x1="${sx(l.x1)}" y1="${sy(l.y1)}" x2="${sx(l.x2)}" y2="${sy(l.y2)}" stroke="${l.color}" stroke-width="2.5" fill="none"/>`;
-    // legenda
-    svg += `<line x1="${legendX}" y1="${20}" x2="${legendX+22}" y2="${20}" stroke="${l.color}" stroke-width="2.5"/>`;
-    svg += `<text class="axis-text" x="${legendX+28}" y="${24}" fill="${l.color}" font-weight="600">${l.label}</text>`;
-    legendX += 165;
+  svg += `<line class="axis-line" x1="${pad.left}" y1="${h-pad.bottom}" x2="${w_-pad.right}" y2="${h-pad.bottom}"/>`;
+  svg += `<line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${h-pad.bottom}"/>`;
+  svg += `<text class="axis-title" x="${pad.left+innerW/2}" y="${h-10}" text-anchor="middle">${xVar} (centralizado)</text>`;
+  svg += `<text class="axis-title" x="${-pad.top-innerH/2}" y="14" text-anchor="middle" transform="rotate(-90)">${yVar} (previsto)</text>`;
+  lines.forEach((l, i) => {
+    svg += `<line x1="${sx(xLo)}" y1="${sy(l.yLo)}" x2="${sx(xHi)}" y2="${sy(l.yHi)}" stroke="${colors[i]}" stroke-width="2.5" fill="none"/>`;
   });
-
   svg += `</svg>`;
   document.getElementById('slopes-container').innerHTML = svg;
 
-  // Tabela de slopes
-  let tb = `<table class="coef-table"><thead><tr><th>Nível de ${wV}</th><th>Inclinação de ${xV} sobre ${yV}</th></tr></thead><tbody>`;
-  lines.forEach(l => {
-    tb += `<tr><td>${l.label}</td><td>${Stats.fmt(l.slope, 3).replace('.',',')}</td></tr>`;
+  // Inclinação de cada linha (slope = bx + bxw*wL)
+  let legend = '<div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">';
+  lines.forEach((l, i) => {
+    const slope = bx + bxw * l.wL;
+    legend += `<div style="display: flex; align-items: center; gap: 12px; font-size: 13px;">
+      <span style="display: inline-block; width: 24px; height: 3px; background: ${colors[i]};"></span>
+      <span style="flex: 1;">${wLabels[i]}</span>
+      <span class="mono">inclinação = ${slope.toFixed(3).replace('.',',')}</span>
+    </div>`;
   });
-  tb += '</tbody></table>';
-  document.getElementById('slopes-table').innerHTML = tb;
+  legend += '</div>';
+  document.getElementById('slopes-legend').innerHTML = legend;
 }
 
-document.getElementById('x-select').addEventListener('change', () => { populateControls(); compute(); });
-document.getElementById('w-select').addEventListener('change', () => { populateControls(); compute(); });
-document.getElementById('y-select').addEventListener('change', () => { populateControls(); compute(); });
+['x-select','w-select','y-select'].forEach(id => document.getElementById(id).addEventListener('change', compute));
 
 document.getElementById('csv-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(!file) return;
+  const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const parsed = Stats.parseCSV(ev.target.result);
-      const numericVars = parsed.headers.filter(h =>
-        parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h]))
-      );
-      if(numericVars.length < 3){ alert('Precisa de pelo menos 3 colunas numéricas (X, W, Y).'); return; }
-      DATA = parsed.rows;
-      ALL_VARS = numericVars;
+      const numericVars = parsed.headers.filter(h => parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h])));
+      if(numericVars.length < 3){ alert('Precisa de pelo menos 3 colunas numéricas.'); return; }
+      DATA = parsed.rows; ALL_VARS = numericVars;
       document.getElementById('data-source').textContent = `CSV "${file.name}" (N = ${DATA.length})`;
-      populateSelects();
-      compute();
+      populateSelects(); compute();
     } catch(err){ alert('Erro: ' + err.message); }
   };
   reader.readAsText(file);
 });
 
+// Quiz
+document.getElementById('quiz-container').innerHTML = WC.renderQuiz([
+  {
+    q: 'Seu modelo de moderação retornou β interação = 0,30, p < 0,001, f² = 0,015. Pela <em>régua canônica de Cohen (1988)</em>, esse f² seria classificado como?',
+    options: [
+      { label: 'Trivial', correct: true, explain: 'Pela escala de Cohen, f² < 0,02 é trivial. Mas pelas referências específicas de moderação (Aguinis et al., 2005), esse mesmo valor já seria considerado médio. Esse é exatamente o ponto: usar a escala errada subestima sistematicamente os efeitos de interação.' },
+      { label: 'Pequeno', correct: false, explain: 'Pequeno em Cohen é f² ≥ 0,02. Cuidado — 0,015 está abaixo desse limite.' },
+      { label: 'Médio', correct: false, explain: 'Médio em Cohen é f² ≥ 0,15. 0,015 está muito abaixo dessa banda — mas usando Aguinis, sim, seria médio.' }
+    ]
+  },
+  {
+    q: 'No mesmo cenário (β interação significativo, p < 0,001), <em>por que centralizamos</em> X e W antes de criar o termo de interação?',
+    options: [
+      { label: 'Para reduzir a multicolinearidade entre o termo X×W e os efeitos principais X e W', correct: true, explain: 'Exato. Sem centralização, X×W fica fortemente correlacionado com X e W, inflando os VIFs. A centralização (Aiken & West, 1991) preserva o β da interação (que é o foco do teste) e melhora a interpretabilidade dos β principais — que passam a representar o efeito quando a outra variável está na média.' },
+      { label: 'Para satisfazer o pressuposto de normalidade', correct: false, explain: 'Centralização não afeta a forma da distribuição — só desloca a média. Não tem relação direta com normalidade.' },
+      { label: 'Para padronizar os β (deixá-los na mesma escala)', correct: false, explain: 'Padronização (z-score) e centralização (subtrair a média) são coisas diferentes. Centralizar não muda a escala, só desloca o zero.' }
+    ]
+  },
+  {
+    q: 'As simple slopes mostram a inclinação de Y ~ X em três valores de W. Se a interação é positiva (β > 0), o que esperamos ver?',
+    options: [
+      { label: 'As três retas paralelas', correct: false, explain: 'Retas paralelas indicam ausência de moderação — mesma inclinação em todos os níveis de W.' },
+      { label: 'A inclinação aumenta conforme W aumenta', correct: true, explain: 'Correto. Slope em W=w₀ é (β_X + β_XW · w₀). Se β_XW > 0, valores maiores de W produzem inclinações maiores — as retas "abrem em leque".' },
+      { label: 'A inclinação diminui conforme W aumenta', correct: false, explain: 'Esse seria o padrão para β_XW < 0 (interação negativa).' }
+    ]
+  }
+], { subtitle: 'Três pontos críticos sobre moderação.' });
+
 populateSelects();
 compute();
 </script>
+<!-- Cloudflare Web Analytics — INSTRUÇÕES no guia de uso (PDF/DOCX).
+     1) Crie conta gratuita em dash.cloudflare.com
+     2) Web Analytics → Add a site → cadastre [seu-usuario].github.io
+     3) Cole o token aqui no lugar de COLE_SEU_TOKEN_AQUI e descomente a linha abaixo. -->
+<!-- <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;COLE_SEU_TOKEN_AQUI&quot;}"></script> -->
 </body>
 </html>

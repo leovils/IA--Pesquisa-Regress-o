@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/dados.js"></script>
 <script src="assets/stats.js"></script>
+<script src="assets/widgets-common.js"></script>
 </head>
 <body>
 <div class="container">
@@ -15,12 +16,12 @@
     <a href="index.html" class="home-link">← Jornada</a>
     <div class="breadcrumb">Estágio III · de V · O coração da jornada</div>
     <h1>Regressão Múltipla — Construção do Modelo</h1>
-    <div class="subtitle">Marque os preditores um a um e acompanhe, ao vivo, como nascem (e mudam) os coeficientes β, os erros-padrão, os t, os p, o R², o R² ajustado, o ΔR² em relação ao modelo anterior e o VIF de cada preditor.</div>
+    <div class="subtitle">Marque os preditores um a um e acompanhe os β, R², R² ajustado, ΔR² e VIFs mudando ao vivo. Cada modelo entra no histórico — você pode <strong>clicar para restaurá-lo</strong> ou <strong>comparar dois modelos lado a lado</strong>. A calculadora de N mostra se sua amostra atende aos critérios de <span class="ref-cite" title="Cohen, J. (1988). Statistical power analysis for the behavioral sciences (2nd ed.). Erlbaum.">Cohen (1988)</span> e <span class="ref-cite" title="Green, S. B. (1991). How many subjects does it take to do a regression analysis? Multivariate Behavioral Research, 26(3), 499-510.">Green (1991)</span>.</div>
   </header>
 
   <div class="panel">
     <h3 class="panel-title">Dados</h3>
-    <div class="grid-2" style="grid-template-columns: 1fr 1fr;">
+    <div class="grid-equal-2">
       <div>
         <label class="control-label">Fonte ativa</label>
         <div id="data-source" class="mono" style="font-size: 13px; color: var(--ink-soft);">Banco pré-carregado (N = 180)</div>
@@ -28,13 +29,11 @@
       <div class="upload-zone">
         <label>Subir CSV próprio</label>
         <input type="file" id="csv-input" accept=".csv,.txt">
-        <div class="muted mt-12" style="font-size: 11.5px;">Primeira linha = cabeçalho com nomes das variáveis.</div>
       </div>
     </div>
   </div>
 
   <div class="grid-2">
-
     <div>
       <div class="panel">
         <h3 class="panel-title">Variável Dependente</h3>
@@ -51,18 +50,20 @@
 
     <div>
       <div class="panel">
-        <h3 class="panel-title">Desempenho do Modelo</h3>
+        <h3 class="panel-title">Desempenho do Modelo Atual</h3>
         <div id="kpis-container">
           <div class="muted text-center" style="padding: 20px 0;">Selecione ao menos um preditor.</div>
         </div>
+        <div id="ruler-container"></div>
       </div>
 
       <div class="panel">
-        <h3 class="panel-title">Comparação com Modelo Anterior</h3>
-        <div class="panel-subtitle">A cada nova seleção, mostramos a mudança em R² ajustado.</div>
+        <h3 class="panel-title">Histórico (clique para restaurar)</h3>
+        <div class="panel-subtitle">Os ícones permitem fixar até 2 modelos para a comparação lado-a-lado abaixo.</div>
         <div id="history-container">
           <div class="muted text-center" style="padding: 12px 0; font-size: 13px;">O histórico aparecerá conforme você alterar a seleção.</div>
         </div>
+        <button class="btn secondary mt-12" id="btn-clear-history" style="width:100%; display:none;">Limpar histórico</button>
       </div>
     </div>
   </div>
@@ -71,22 +72,36 @@
     <h3 class="panel-title">Coeficientes</h3>
     <table class="coef-table">
       <thead>
-        <tr><th>Termo</th><th>β</th><th>EP</th><th>t</th><th>p</th><th>IC 95% inf</th><th>IC 95% sup</th><th>VIF</th></tr>
+        <tr><th>Termo</th><th>β</th><th>EP</th><th>t</th><th>p</th><th>IC 95% inf</th><th>IC 95% sup</th><th>VIF</th><th>f² local</th></tr>
       </thead>
       <tbody id="coef-tbody">
-        <tr><td colspan="8" class="muted text-center" style="padding: 14px 0;">—</td></tr>
+        <tr><td colspan="9" class="muted text-center" style="padding: 14px 0;">—</td></tr>
       </tbody>
     </table>
   </div>
 
-  <div class="panel">
-    <h3 class="panel-title">Interpretação</h3>
-    <div id="interp-content" class="muted">Selecione preditores para ver a interpretação narrativa.</div>
+  <div class="panel" id="compare-panel" style="display:none;">
+    <h3 class="panel-title">Comparação lado-a-lado</h3>
+    <div class="panel-subtitle">Modelos fixados via o botão <strong>📌</strong> no histórico.</div>
+    <div id="compare-container"></div>
   </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Tamanho da amostra (poder estatístico)</h3>
+    <div id="n-calc-container"></div>
+  </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Interpretação e Formato APA</h3>
+    <div id="interp-content" class="muted">Selecione preditores para ver a interpretação narrativa.</div>
+    <div id="apa-container"></div>
+  </div>
+
+  <div id="quiz-container"></div>
 
   <footer class="widget-footer">
     <div class="glyph">✦ ✦ ✦</div>
-    <div>Estágio III de V · Quando convencer-se da força do modelo, prossiga para <a href="04-moderacao.html" style="color: var(--gold);">Moderação</a>.</div>
+    <div>Estágio III de V · <a href="referencias.html">Referências</a></div>
   </footer>
 
 </div>
@@ -94,21 +109,22 @@
 <script>
 let DATA = window.BANCO_180;
 let ALL_VARS = ['VI1','VI2','VI3','W1','VD1','VD2'];
-let DEFAULT_VIS = ['VI1','VI2','VI3','W1'];
-let DEFAULT_VDS = ['VD1','VD2'];
+const DEFAULT_VIS = ['VI1','VI2','VI3','W1'];
+const DEFAULT_VDS = ['VD1','VD2'];
 
 let currentVD = 'VD1';
-let currentVIs = ['VI1'];  // começa com 1 preditor
-let modelHistory = [];     // pilha de R² ajustados
+let currentVIs = ['VI1'];
+let modelHistory = [];  // [{ id, vis, vd, r2, r2adj, betas, ses, ps, pinned }]
+let pinnedModels = [];  // ids de até 2 modelos fixados
+let modelCounter = 0;
+let suppressHistory = false;
 
 function populateLists(){
   const vdList = document.getElementById('vd-list');
   const viList = document.getElementById('vi-list');
   vdList.innerHTML = ''; viList.innerHTML = '';
-
   const vds = (DATA === window.BANCO_180) ? DEFAULT_VDS : ALL_VARS;
   const vis = (DATA === window.BANCO_180) ? DEFAULT_VIS : ALL_VARS.filter(v => v !== currentVD);
-
   vds.forEach(v => {
     const checked = v === currentVD ? 'checked' : '';
     vdList.innerHTML += `<label><input type="radio" name="vd" value="${v}" ${checked} onchange="setVD('${v}')"><span>${v}</span></label>`;
@@ -123,71 +139,80 @@ function populateLists(){
 function setVD(v){
   currentVD = v;
   currentVIs = currentVIs.filter(p => p !== v);
-  modelHistory = [];
+  modelHistory = []; pinnedModels = []; modelCounter = 0;
   populateLists();
-  recompute(true);
+  recompute();
 }
 
 function toggleVI(v, checked){
   if(checked) currentVIs.push(v);
   else currentVIs = currentVIs.filter(p => p !== v);
-  recompute(false);
+  recompute();
 }
 
 document.getElementById('btn-clear').addEventListener('click', () => {
   currentVIs = [];
-  modelHistory = [];
   populateLists();
-  recompute(true);
+  recompute();
+});
+document.getElementById('btn-clear-history').addEventListener('click', () => {
+  modelHistory = []; pinnedModels = []; modelCounter = 0;
+  renderHistory(); renderCompare();
 });
 
-function recompute(reset){
+function recompute(){
   if(currentVIs.length === 0){
-    document.getElementById('kpis-container').innerHTML =
-      `<div class="muted text-center" style="padding: 20px 0;">Selecione ao menos um preditor.</div>`;
-    document.getElementById('coef-tbody').innerHTML =
-      `<tr><td colspan="8" class="muted text-center" style="padding: 14px 0;">—</td></tr>`;
-    document.getElementById('interp-content').innerHTML =
-      `<div class="muted">Selecione preditores para ver a interpretação narrativa.</div>`;
-    if(reset) document.getElementById('history-container').innerHTML =
-      `<div class="muted text-center" style="padding: 12px 0; font-size: 13px;">O histórico aparecerá conforme você alterar a seleção.</div>`;
+    document.getElementById('kpis-container').innerHTML = `<div class="muted text-center" style="padding: 20px 0;">Selecione ao menos um preditor.</div>`;
+    document.getElementById('ruler-container').innerHTML = '';
+    document.getElementById('coef-tbody').innerHTML = `<tr><td colspan="9" class="muted text-center" style="padding: 14px 0;">—</td></tr>`;
+    document.getElementById('interp-content').innerHTML = `<div class="muted">Selecione preditores para ver a interpretação narrativa.</div>`;
+    document.getElementById('apa-container').innerHTML = '';
+    document.getElementById('n-calc-container').innerHTML = '<div class="muted">—</div>';
     return;
   }
 
   const y = DATA.map(r => r[currentVD]);
   const X = DATA.map(r => currentVIs.map(v => r[v]));
   const m = Stats.ols(X, y);
-  if(m.error){
-    document.getElementById('kpis-container').innerHTML = `<div class="badge bad">${m.error}</div>`;
-    return;
-  }
+  if(m.error){ document.getElementById('kpis-container').innerHTML = `<div class="badge bad">${m.error}</div>`; return; }
 
-  // VIFs (só para preditores, sem intercepto)
-  let vifs = [];
-  if(currentVIs.length >= 2){
-    vifs = Stats.vifAll(X);
-  } else {
-    vifs = [1];
-  }
+  // VIFs
+  const vifs = currentVIs.length >= 2 ? Stats.vifAll(X) : [1];
+
+  // f² local: para cada preditor, rodar OLS sem ele e calcular incremento
+  const f2Local = currentVIs.map((_, j) => {
+    if(currentVIs.length === 1) return Stats.cohenF2(m.r2);
+    const Xr = DATA.map(r => currentVIs.filter((_,k) => k!==j).map(v => r[v]));
+    const mr = Stats.ols(Xr, y);
+    if(mr.error) return NaN;
+    return Stats.f2Increment(m.r2, mr.r2);
+  });
 
   // KPIs
-  const prevR2adj = modelHistory.length ? modelHistory[modelHistory.length-1].r2adj : null;
-  const deltaR2adj = prevR2adj !== null ? m.r2adj - prevR2adj : null;
+  const prev = modelHistory.length ? modelHistory[modelHistory.length-1] : null;
+  const deltaR2adj = prev && JSON.stringify(prev.vis.sort()) !== JSON.stringify(currentVIs.slice().sort()) ? m.r2adj - prev.r2adj : null;
+  const f2model = Stats.cohenF2(m.r2);
+
   document.getElementById('kpis-container').innerHTML = `
     <div class="kpi-grid">
       <div class="kpi highlight">
         <div class="kpi-label">R²</div>
-        <div class="kpi-value">${Stats.fmt(m.r2, 3).replace('.',',')}</div>
-        <div class="kpi-sub">${(m.r2*100).toFixed(1).replace('.',',')}% da variância</div>
+        <div class="kpi-value">${Stats.fmtBr(m.r2, 3)}</div>
+        <div class="kpi-sub">${Stats.classify(m.r2, 'r2')} · ${(m.r2*100).toFixed(1).replace('.',',')}%</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">R² ajust.</div>
-        <div class="kpi-value">${Stats.fmt(m.r2adj, 3).replace('.',',')}</div>
+        <div class="kpi-value">${Stats.fmtBr(m.r2adj, 3)}</div>
         <div class="kpi-sub">${deltaR2adj !== null ? (deltaR2adj >= 0 ? '↑' : '↓') + ' ' + Math.abs(deltaR2adj).toFixed(3).replace('.',',') : '—'}</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">F (gl ${m.df_mod}, ${m.df_res})</div>
-        <div class="kpi-value">${Stats.fmt(m.f, 2).replace('.',',')}</div>
+        <div class="kpi-label">f² (Cohen)</div>
+        <div class="kpi-value">${Stats.fmtBr(f2model, 3)}</div>
+        <div class="kpi-sub">${Stats.classify(f2model, 'f2')}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">F (${m.df_mod},${m.df_res})</div>
+        <div class="kpi-value">${Stats.fmtBr(m.f, 2)}</div>
         <div class="kpi-sub">p = ${Stats.fmtP(m.fp)}</div>
       </div>
       <div class="kpi">
@@ -197,53 +222,79 @@ function recompute(reset){
     </div>
   `;
 
-  // Tabela de coeficientes
+  // Réguas: R² e f² do modelo
+  document.getElementById('ruler-container').innerHTML =
+    WC.renderEffectRuler(m.r2, 'r2', {label: 'R² do modelo', ref: 'Cohen, 1988'}) +
+    WC.renderEffectRuler(f2model, 'f2', {label: 'f² (Cohen) do modelo', ref: 'Cohen, 1988'});
+
+  // Tabela
   const termNames = ['Intercepto'].concat(currentVIs);
   let tb = '';
   for(let i=0;i<m.beta.length;i++){
-    const vif = i === 0 ? '—' : (vifs[i-1] !== undefined ? Stats.fmt(vifs[i-1],2).replace('.',',') : '—');
+    const vif = i === 0 ? '—' : Stats.fmtBr(vifs[i-1], 2);
     const vifBadge = i > 0 ? badgeVIF(vifs[i-1]) : '';
+    const f2L = i === 0 ? '—' : `${Stats.fmtBr(f2Local[i-1], 3)} <span class="muted">(${Stats.classify(f2Local[i-1], 'f2').toLowerCase()})</span>`;
     tb += `<tr><td>${termNames[i]}</td>
-      <td>${Stats.fmt(m.beta[i],4).replace('.',',')}</td>
-      <td>${Stats.fmt(m.se[i],4).replace('.',',')}</td>
-      <td>${Stats.fmt(m.t[i],3).replace('.',',')}</td>
+      <td>${Stats.fmtBr(m.beta[i],4)}</td>
+      <td>${Stats.fmtBr(m.se[i],4)}</td>
+      <td>${Stats.fmtBr(m.t[i],3)}</td>
       <td>${Stats.fmtP(m.p[i])} <span class="sig-stars">${Stats.stars(m.p[i])}</span></td>
-      <td>${Stats.fmt(m.ciLow[i],3).replace('.',',')}</td>
-      <td>${Stats.fmt(m.ciHigh[i],3).replace('.',',')}</td>
+      <td>${Stats.fmtBr(m.ciLow[i],3)}</td>
+      <td>${Stats.fmtBr(m.ciHigh[i],3)}</td>
       <td>${vif} ${vifBadge}</td>
+      <td>${f2L}</td>
     </tr>`;
   }
   document.getElementById('coef-tbody').innerHTML = tb;
 
+  // Calculadora N
+  document.getElementById('n-calc-container').innerHTML = WC.renderNCalc(m.n, currentVIs.length);
+
   // Interpretação
   let sigPreds = [];
   for(let i=1;i<m.beta.length;i++){
-    if(m.p[i] < 0.05) sigPreds.push({name: termNames[i], beta: m.beta[i], p: m.p[i]});
+    if(m.p[i] < 0.05) sigPreds.push({name: termNames[i], beta: m.beta[i], p: m.p[i], f2: f2Local[i-1]});
   }
   let interp = '';
   interp += `<p>Com <strong>${currentVIs.length}</strong> preditor(es), o modelo explica
              <strong>${(m.r2*100).toFixed(1).replace('.',',')}%</strong> da variância de
-             <strong>${currentVD}</strong> (R² ajustado = ${Stats.fmt(m.r2adj,3).replace('.',',')}).</p>`;
+             <strong>${currentVD}</strong> (R² ajustado = ${Stats.fmtBr(m.r2adj,3)}, f² = ${Stats.fmtBr(f2model,3)} — efeito ${Stats.classify(f2model,'f2').toLowerCase()} segundo Cohen, 1988).</p>`;
   if(sigPreds.length){
-    interp += `<p>Preditores significativos ao nível de 5%: ` +
-      sigPreds.map(s => `<strong>${s.name}</strong> (β = ${s.beta.toFixed(3).replace('.',',')}, p = ${Stats.fmtP(s.p)})`).join('; ') + `.</p>`;
+    interp += `<p>Preditores significativos: ` + sigPreds.map(s => `<strong>${s.name}</strong> (β = ${s.beta.toFixed(3).replace('.',',')}, f² = ${Stats.fmtBr(s.f2,3)} — ${Stats.classify(s.f2,'f2').toLowerCase()})`).join('; ') + `.</p>`;
   } else {
     interp += `<p class="muted">Nenhum preditor atingiu significância individual neste modelo.</p>`;
   }
-  // Aviso VIF
   const maxVIF = Math.max(...vifs);
   if(maxVIF >= 5){
-    interp += `<p><span class="badge ${maxVIF >= 10 ? 'bad' : 'warn'}">VIF ${maxVIF >= 10 ? 'crítico' : 'elevado'}: ${maxVIF.toFixed(2).replace('.',',')}</span> — atenção à multicolinearidade.</p>`;
+    interp += `<p><span class="badge ${maxVIF >= 10 ? 'bad' : 'warn'}">VIF ${maxVIF >= 10 ? 'crítico' : 'elevado'}: ${maxVIF.toFixed(2).replace('.',',')}</span> — atenção à multicolinearidade (Hair et al., 2019).</p>`;
   }
   document.getElementById('interp-content').innerHTML = interp;
 
+  // APA
+  document.getElementById('apa-container').innerHTML = WC.renderAPABox(WC.apaRegMultipla(currentVD, currentVIs, m));
+
   // Histórico
-  const entry = { vis: currentVIs.slice(), vd: currentVD, r2: m.r2, r2adj: m.r2adj };
-  if(modelHistory.length === 0 || JSON.stringify(entry.vis) !== JSON.stringify(modelHistory[modelHistory.length-1].vis) || entry.vd !== modelHistory[modelHistory.length-1].vd){
-    modelHistory.push(entry);
-    if(modelHistory.length > 8) modelHistory.shift();
+  if(!suppressHistory){
+    const last = modelHistory[modelHistory.length-1];
+    const sameAsLast = last && last.vd === currentVD && JSON.stringify(last.vis.slice().sort()) === JSON.stringify(currentVIs.slice().sort());
+    if(!sameAsLast){
+      modelCounter++;
+      modelHistory.push({
+        id: modelCounter,
+        vis: currentVIs.slice(),
+        vd: currentVD,
+        r2: m.r2, r2adj: m.r2adj,
+        f: m.f, fp: m.fp,
+        n: m.n, k: currentVIs.length,
+        betas: m.beta.slice(), ses: m.se.slice(), ps: m.p.slice(),
+        ciLow: m.ciLow.slice(), ciHigh: m.ciHigh.slice(),
+        termNames: termNames.slice()
+      });
+      if(modelHistory.length > 10) modelHistory.shift();
+    }
+    renderHistory();
   }
-  renderHistory();
+  renderCompare();
 }
 
 function badgeVIF(v){
@@ -255,47 +306,150 @@ function badgeVIF(v){
 
 function renderHistory(){
   const c = document.getElementById('history-container');
-  if(modelHistory.length === 0){ c.innerHTML = ''; return; }
+  if(modelHistory.length === 0){
+    c.innerHTML = '<div class="muted text-center" style="padding: 12px 0; font-size: 13px;">O histórico aparecerá conforme você alterar a seleção.</div>';
+    document.getElementById('btn-clear-history').style.display = 'none';
+    return;
+  }
+  document.getElementById('btn-clear-history').style.display = '';
   let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
-  modelHistory.slice().reverse().forEach((h, idx) => {
-    const ord = modelHistory.length - idx;
-    const vis = h.vis.join(' + ');
-    html += `<div style="display: flex; justify-content: space-between; padding: 7px 11px; background: ${idx===0?'#fcf5e7':'var(--bg-soft)'}; border-radius: 6px; font-size: 13px; align-items: center;">
-      <span><span class="mono" style="color: var(--gold); font-weight: 600;">M${ord}</span> · ${h.vd} ~ ${vis}</span>
-      <span class="mono">R²ₐⱼ = ${Stats.fmt(h.r2adj,3).replace('.',',')}</span>
+  modelHistory.slice().reverse().forEach((h) => {
+    const isCurrent = h.vd === currentVD && JSON.stringify(h.vis.slice().sort()) === JSON.stringify(currentVIs.slice().sort());
+    const pinned = pinnedModels.includes(h.id);
+    html += `<div class="history-item ${isCurrent?'current':''}" onclick="restoreModel(${h.id})">
+      <span><span class="model-tag">M${h.id}</span> · ${h.vd} ~ ${h.vis.join(' + ')}</span>
+      <span style="display:flex; align-items: center; gap: 12px;">
+        <span class="mono" style="font-size: 12px;">R²ₐⱼ = ${Stats.fmtBr(h.r2adj,3)}</span>
+        <button class="history-mini-btn ${pinned?'active':''}" onclick="event.stopPropagation(); togglePin(${h.id})" title="Fixar para comparação">📌</button>
+      </span>
     </div>`;
   });
   html += '</div>';
   c.innerHTML = html;
 }
 
-// CSV
+function restoreModel(id){
+  const h = modelHistory.find(m => m.id === id);
+  if(!h) return;
+  currentVD = h.vd;
+  currentVIs = h.vis.slice();
+  suppressHistory = true;
+  populateLists();
+  recompute();
+  suppressHistory = false;
+  renderHistory();
+}
+
+function togglePin(id){
+  const idx = pinnedModels.indexOf(id);
+  if(idx >= 0) pinnedModels.splice(idx, 1);
+  else {
+    if(pinnedModels.length >= 2) pinnedModels.shift();
+    pinnedModels.push(id);
+  }
+  renderHistory();
+  renderCompare();
+}
+
+function renderCompare(){
+  const panel = document.getElementById('compare-panel');
+  if(pinnedModels.length === 0){ panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  const models = pinnedModels.map(id => modelHistory.find(m => m.id === id)).filter(m => m);
+  if(models.length === 1) models.push(null);
+  let html = '<div class="compare-grid">';
+  models.forEach((h, idx) => {
+    if(!h){
+      html += `<div class="compare-col"><h4>Modelo ${idx+1}</h4><div class="muted">Fixe outro modelo no histórico para comparar.</div></div>`;
+      return;
+    }
+    const f2 = Stats.cohenF2(h.r2);
+    html += `<div class="compare-col">
+      <h4>M${h.id}: ${h.vd} ~ ${h.vis.join(' + ')}</h4>
+      <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div class="kpi"><div class="kpi-label">R²</div><div class="kpi-value" style="font-size: 18px;">${Stats.fmtBr(h.r2,3)}</div></div>
+        <div class="kpi"><div class="kpi-label">R²ₐⱼ</div><div class="kpi-value" style="font-size: 18px;">${Stats.fmtBr(h.r2adj,3)}</div></div>
+        <div class="kpi"><div class="kpi-label">F</div><div class="kpi-value" style="font-size: 18px;">${Stats.fmtBr(h.f,2)}</div><div class="kpi-sub">p = ${Stats.fmtP(h.fp)}</div></div>
+        <div class="kpi"><div class="kpi-label">f²</div><div class="kpi-value" style="font-size: 18px;">${Stats.fmtBr(f2,3)}</div><div class="kpi-sub">${Stats.classify(f2,'f2')}</div></div>
+      </div>
+      <table class="coef-table mt-12" style="font-size: 12px;">
+        <thead><tr><th>Termo</th><th>β</th><th>p</th></tr></thead>
+        <tbody>`;
+    for(let i=1;i<h.betas.length;i++){
+      html += `<tr><td>${h.termNames[i]}</td><td>${Stats.fmtBr(h.betas[i],3)}</td><td>${Stats.fmtP(h.ps[i])} ${Stats.stars(h.ps[i])}</td></tr>`;
+    }
+    html += `</tbody></table>`;
+    html += `</div>`;
+  });
+  html += '</div>';
+  // Diferença
+  if(models[0] && models[1]){
+    const a = models[0], b = models[1];
+    const dr2adj = b.r2adj - a.r2adj;
+    const sign = dr2adj >= 0 ? '+' : '–';
+    html += `<div class="interp-box mt-12">
+      <strong>Diferença M${b.id} – M${a.id}:</strong> ΔR² = ${sign}${Math.abs(b.r2 - a.r2).toFixed(3).replace('.',',')},
+      ΔR²ₐⱼ = ${sign}${Math.abs(dr2adj).toFixed(3).replace('.',',')}.
+      ${b.k !== a.k ? `M${b.id} tem ${b.k} preditor(es); M${a.id} tem ${a.k}.` : ''}
+      ${Math.abs(dr2adj) < 0.005 ? 'Diferença trivial em R² ajustado — provavelmente preditor sem contribuição única.' : ''}
+    </div>`;
+  }
+  document.getElementById('compare-container').innerHTML = html;
+}
+
 document.getElementById('csv-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(!file) return;
+  const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const parsed = Stats.parseCSV(ev.target.result);
-      const numericVars = parsed.headers.filter(h =>
-        parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h]))
-      );
+      const numericVars = parsed.headers.filter(h => parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h])));
       if(numericVars.length < 2){ alert('Precisa de pelo menos 2 colunas numéricas.'); return; }
-      DATA = parsed.rows;
-      ALL_VARS = numericVars;
+      DATA = parsed.rows; ALL_VARS = numericVars;
       currentVD = numericVars[numericVars.length-1];
-      currentVIs = [];
-      modelHistory = [];
+      currentVIs = []; modelHistory = []; pinnedModels = []; modelCounter = 0;
       document.getElementById('data-source').textContent = `CSV "${file.name}" (N = ${DATA.length})`;
-      populateLists();
-      recompute(true);
+      populateLists(); recompute();
     } catch(err){ alert('Erro: ' + err.message); }
   };
   reader.readAsText(file);
 });
 
+// Quiz
+document.getElementById('quiz-container').innerHTML = WC.renderQuiz([
+  {
+    q: 'Você está construindo o modelo VD1 ~ VI1 + VI2 e tem N = 80 casos. Pelo critério de Green (1991) para teste dos β individuais (N ≥ 104 + k), sua amostra é suficiente?',
+    options: [
+      { label: 'Sim, atende', correct: false, explain: 'O cálculo dá 104 + 2 = 106. Com N = 80, você está abaixo do mínimo para testar os β individuais com poder ≥ 0,80.' },
+      { label: 'Não, insuficiente', correct: true, explain: 'Correto. Green (1991) sugere N ≥ 104 + k = 106 para β individuais. Para o modelo global (N ≥ 50 + 8k = 66) seria suficiente, mas não para detectar efeitos de preditores individuais.' },
+      { label: 'Depende do tamanho do efeito esperado', correct: false, explain: 'Embora seja verdade que efeitos maiores exigem N menor, a regra de Green é uma regra prática para efeitos médios. Para essa pergunta, a resposta direta é "não atende".' }
+    ]
+  },
+  {
+    q: 'Ao adicionar VI3 ao modelo, R² subiu de 0,21 para 0,23 mas R² ajustado caiu de 0,20 para 0,19. O que isso indica?',
+    options: [
+      { label: 'VI3 é um bom preditor', correct: false, explain: 'Cuidado: R² <em>sempre</em> sobe quando adicionamos preditores, mesmo que aleatórios. R² ajustado caindo sinaliza o oposto.' },
+      { label: 'VI3 não contribui de forma substantiva — o ganho não compensa o gl perdido', correct: true, explain: 'Exato. R² ajustado penaliza inclusões "vazias". A queda do R²ₐⱼ é o sinal canônico de que o preditor não compensa a complexidade adicionada.' },
+      { label: 'Há multicolinearidade severa', correct: false, explain: 'Multicolinearidade aparece principalmente nos VIFs e nos erros-padrão dos β. R²ₐⱼ caindo aponta mais para preditor irrelevante.' }
+    ]
+  },
+  {
+    q: 'No seu modelo, o VIF de VI2 está em 8,3. Pelas referências canônicas (Hair et al., 2019), você diria que isso é:',
+    options: [
+      { label: 'Confortável', correct: false, explain: 'Confortável é VIF < 5. 8,3 está acima dessa banda.' },
+      { label: 'Atenção, mas não crítico', correct: true, explain: 'Correto. Hair et al. (2019) classifica VIF entre 5 e 10 como zona de atenção — o preditor compartilha bastante variância com os outros, mas o modelo ainda é estimável.' },
+      { label: 'Crítico — descartar o preditor', correct: false, explain: 'Crítico costuma ser VIF ≥ 10. Em 8,3, o ideal é investigar (correlação com outros preditores, centralização) antes de descartar.' }
+    ]
+  }
+], { subtitle: 'Três armadilhas frequentes em regressão múltipla.' });
+
 populateLists();
-recompute(false);
+recompute();
 </script>
+<!-- Cloudflare Web Analytics — INSTRUÇÕES no guia de uso (PDF/DOCX).
+     1) Crie conta gratuita em dash.cloudflare.com
+     2) Web Analytics → Add a site → cadastre [seu-usuario].github.io
+     3) Cole o token aqui no lugar de COLE_SEU_TOKEN_AQUI e descomente a linha abaixo. -->
+<!-- <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;COLE_SEU_TOKEN_AQUI&quot;}"></script> -->
 </body>
 </html>

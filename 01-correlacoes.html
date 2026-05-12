@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/dados.js"></script>
 <script src="assets/stats.js"></script>
+<script src="assets/widgets-common.js"></script>
 </head>
 <body>
 <div class="container">
@@ -15,12 +16,12 @@
     <a href="index.html" class="home-link">← Jornada</a>
     <div class="breadcrumb">Estágio I · de V</div>
     <h1>Correlações</h1>
-    <div class="subtitle">A paisagem antes da regressão. Clique em qualquer célula da matriz para ver o diagrama de dispersão correspondente, o coeficiente <em>r</em> de Pearson, o teste <em>t</em> de significância e uma interpretação textual.</div>
+    <div class="subtitle">A paisagem antes da regressão. Clique em qualquer célula da matriz para detalhar a correlação. A régua mostra a magnitude do efeito segundo os critérios canônicos de <span class="ref-cite" title="Cohen, J. (1988). Statistical power analysis for the behavioral sciences (2nd ed.). Erlbaum.">Cohen (1988)</span>.</div>
   </header>
 
   <div class="panel">
     <h3 class="panel-title">Dados</h3>
-    <div class="grid-2" style="grid-template-columns: 1fr 1fr;">
+    <div class="grid-equal-2">
       <div>
         <label class="control-label">Fonte ativa</label>
         <div id="data-source" class="mono" style="font-size: 13px; color: var(--ink-soft);">Banco pré-carregado (N = 180)</div>
@@ -28,13 +29,12 @@
       <div class="upload-zone">
         <label>Subir CSV próprio</label>
         <input type="file" id="csv-input" accept=".csv,.txt">
-        <div class="muted mt-12" style="font-size: 11.5px;">Separador: vírgula, ponto-e-vírgula ou tab. Decimal: ponto ou vírgula. Primeira linha = cabeçalho com nomes das variáveis.</div>
+        <div class="muted mt-12" style="font-size: 11.5px;">Separador: vírgula, ponto-e-vírgula ou tab. Decimal: ponto ou vírgula.</div>
       </div>
     </div>
   </div>
 
   <div class="grid-2">
-
     <div class="panel">
       <h3 class="panel-title">Matriz de Correlações</h3>
       <div class="panel-subtitle">Correlação de Pearson. Clique numa célula para detalhar.</div>
@@ -50,14 +50,17 @@
       <h3 class="panel-title" id="scatter-title">Diagrama de Dispersão</h3>
       <div class="panel-subtitle" id="scatter-subtitle">Selecione uma célula da matriz.</div>
       <div id="scatter-container"></div>
+      <div id="scatter-kpis"></div>
+      <div id="effect-ruler-container"></div>
       <div id="scatter-interpret"></div>
     </div>
-
   </div>
+
+  <div id="quiz-container"></div>
 
   <footer class="widget-footer">
     <div class="glyph">✦</div>
-    <div>Estágio I de V · Use o link "Jornada" para navegar</div>
+    <div>Estágio I de V · <a href="referencias.html">Referências bibliográficas</a></div>
   </footer>
 
 </div>
@@ -66,30 +69,13 @@
 let DATA = window.BANCO_180;
 let VARS = ['VI1','VI2','VI3','W1','VD1','VD2'];
 
-function detectNumericVars(data){
-  const cols = Object.keys(data[0]);
-  return cols.filter(c => {
-    if(c === 'ID' || c.toLowerCase() === 'id') return false;
-    const vals = data.map(r => r[c]).filter(v => v !== '' && v !== null);
-    return vals.length > 0 && vals.every(v => typeof v === 'number' && !isNaN(v));
-  });
-}
-
 function rgbForR(r){
-  // -1 → vermelho, 0 → cream, +1 → azul
-  const t = (r + 1) / 2;
   if(r >= 0){
-    const a = r; // intensidade
-    const R = Math.round(250 - (250-44)*a);
-    const G = Math.round(247 - (247-95)*a);
-    const B = Math.round(242 - (242-141)*a*0.7);
-    return `rgb(${R},${G},${B})`;
+    const a = r;
+    return `rgb(${Math.round(250-(250-44)*a)},${Math.round(247-(247-95)*a)},${Math.round(247-(247-141)*a*0.7)})`;
   } else {
     const a = -r;
-    const R = Math.round(250 - (250-160)*a);
-    const G = Math.round(247 - (247-68)*a);
-    const B = Math.round(242 - (242-68)*a);
-    return `rgb(${R},${G},${B})`;
+    return `rgb(${Math.round(250-(250-160)*a)},${Math.round(247-(247-68)*a)},${Math.round(247-(247-68)*a)})`;
   }
 }
 
@@ -100,24 +86,14 @@ function buildMatrix(){
   const w = padLeft + cellSize*vars.length + 20;
   const h = padTop + cellSize*vars.length + 20;
   let svg = `<svg class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet">`;
-  // Header (col labels)
-  vars.forEach((v,j) => {
-    svg += `<text class="axis-title" x="${padLeft + j*cellSize + cellSize/2}" y="${padTop - 12}" text-anchor="middle">${v}</text>`;
-  });
-  vars.forEach((v,i) => {
-    svg += `<text class="axis-title" x="${padLeft - 10}" y="${padTop + i*cellSize + cellSize/2 + 4}" text-anchor="end">${v}</text>`;
-  });
-  // Cells
+  vars.forEach((v,j) => { svg += `<text class="axis-title" x="${padLeft + j*cellSize + cellSize/2}" y="${padTop - 12}" text-anchor="middle">${v}</text>`; });
+  vars.forEach((v,i) => { svg += `<text class="axis-title" x="${padLeft - 10}" y="${padTop + i*cellSize + cellSize/2 + 4}" text-anchor="end">${v}</text>`; });
   for(let i=0;i<vars.length;i++){
     for(let j=0;j<vars.length;j++){
-      const x = padLeft + j*cellSize;
-      const y = padTop + i*cellSize;
+      const x = padLeft + j*cellSize, y = padTop + i*cellSize;
       let label, fill, textColor;
-      if(i === j){
-        label = '1';
-        fill = '#f3ede3';
-        textColor = '#8a8a8a';
-      } else {
+      if(i === j){ label='1'; fill='#f3ede3'; textColor='#8a8a8a'; }
+      else {
         const xv = DATA.map(r => r[vars[j]]);
         const yv = DATA.map(r => r[vars[i]]);
         const r = Stats.correlation(xv, yv).r;
@@ -126,10 +102,8 @@ function buildMatrix(){
         textColor = Math.abs(r) > 0.4 ? 'white' : '#1a1a1a';
       }
       const clickable = i !== j;
-      svg += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="${fill}" stroke="#d4c8b0" stroke-width="0.5"
-              ${clickable ? `style="cursor:pointer" onclick="showScatter('${vars[j]}','${vars[i]}')"` : ''}/>`;
-      svg += `<text x="${x + cellSize/2}" y="${y + cellSize/2 + 4}" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="${textColor}"
-              ${clickable ? `style="cursor:pointer; pointer-events:none"` : ''}>${label}</text>`;
+      svg += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="${fill}" stroke="#d4c8b0" stroke-width="0.5" ${clickable?`style="cursor:pointer" onclick="showScatter('${vars[j]}','${vars[i]}')"`:''}/>`;
+      svg += `<text x="${x + cellSize/2}" y="${y + cellSize/2 + 4}" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="${textColor}" ${clickable?`style="cursor:pointer; pointer-events:none"`:''}>${label}</text>`;
     }
   }
   svg += `</svg>`;
@@ -141,73 +115,54 @@ function showScatter(xVar, yVar){
   const y = DATA.map(r => r[yVar]);
   const corr = Stats.correlation(x, y);
   const n = x.length;
-
-  // Calcular regressão simples para a linha
   const X = x.map(v => [v]);
   const m = Stats.ols(X, y);
   const b0 = m.beta[0], b1 = m.beta[1];
 
-  // Limites
   const xmin = Math.min(...x), xmax = Math.max(...x);
   const ymin = Math.min(...y), ymax = Math.max(...y);
   const xpad = (xmax-xmin)*0.05, ypad = (ymax-ymin)*0.05;
-  const xLo = xmin - xpad, xHi = xmax + xpad;
-  const yLo = ymin - ypad, yHi = ymax + ypad;
-
+  const xLo = xmin-xpad, xHi = xmax+xpad, yLo = ymin-ypad, yHi = ymax+ypad;
   const w = 460, h = 320, pad = {top: 20, right: 20, bottom: 50, left: 56};
-  const innerW = w - pad.left - pad.right;
-  const innerH = h - pad.top - pad.bottom;
-  const sx = v => pad.left + (v - xLo)/(xHi - xLo) * innerW;
-  const sy = v => pad.top + (1 - (v - yLo)/(yHi - yLo)) * innerH;
+  const innerW = w-pad.left-pad.right, innerH = h-pad.top-pad.bottom;
+  const sx = v => pad.left + (v-xLo)/(xHi-xLo) * innerW;
+  const sy = v => pad.top + (1-(v-yLo)/(yHi-yLo)) * innerH;
 
   let svg = `<svg class="chart" viewBox="0 0 ${w} ${h}">`;
-  // grid
   for(let k=0;k<=5;k++){
-    const xv = xLo + (xHi-xLo)*k/5, yv = yLo + (yHi-yLo)*k/5;
+    const xv = xLo+(xHi-xLo)*k/5, yv = yLo+(yHi-yLo)*k/5;
     svg += `<line class="grid-line" x1="${sx(xv)}" y1="${pad.top}" x2="${sx(xv)}" y2="${h-pad.bottom}"/>`;
     svg += `<line class="grid-line" x1="${pad.left}" y1="${sy(yv)}" x2="${w-pad.right}" y2="${sy(yv)}"/>`;
     svg += `<text class="axis-text" x="${sx(xv)}" y="${h-pad.bottom+16}" text-anchor="middle">${xv.toFixed(1)}</text>`;
     svg += `<text class="axis-text" x="${pad.left-6}" y="${sy(yv)+4}" text-anchor="end">${yv.toFixed(1)}</text>`;
   }
-  // axes
   svg += `<line class="axis-line" x1="${pad.left}" y1="${h-pad.bottom}" x2="${w-pad.right}" y2="${h-pad.bottom}"/>`;
   svg += `<line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${h-pad.bottom}"/>`;
   svg += `<text class="axis-title" x="${pad.left+innerW/2}" y="${h-10}" text-anchor="middle">${xVar}</text>`;
   svg += `<text class="axis-title" x="${-pad.top-innerH/2}" y="14" text-anchor="middle" transform="rotate(-90)">${yVar}</text>`;
-  // pontos
-  for(let i=0;i<n;i++){
-    svg += `<circle class="point" cx="${sx(x[i])}" cy="${sy(y[i])}" r="3.5"/>`;
-  }
-  // linha de regressão
-  const x1=xLo, x2=xHi;
-  const y1=b0+b1*x1, y2=b0+b1*x2;
-  svg += `<line class="reg-line" x1="${sx(x1)}" y1="${sy(y1)}" x2="${sx(x2)}" y2="${sy(y2)}"/>`;
+  for(let i=0;i<n;i++) svg += `<circle class="point" cx="${sx(x[i])}" cy="${sy(y[i])}" r="3.5"/>`;
+  const yA = b0+b1*xLo, yB = b0+b1*xHi;
+  svg += `<line class="reg-line" x1="${sx(xLo)}" y1="${sy(yA)}" x2="${sx(xHi)}" y2="${sy(yB)}"/>`;
   svg += `</svg>`;
 
   document.getElementById('scatter-container').innerHTML = svg;
   document.getElementById('scatter-title').innerHTML = `Diagrama: ${xVar} × ${yVar}`;
   document.getElementById('scatter-subtitle').innerHTML = `N = ${n} · Reta de regressão simples em destaque`;
 
-  // Interpretação
   const r = corr.r;
   const absR = Math.abs(r);
-  let forca = 'desprezível';
-  if(absR >= 0.5) forca = 'forte';
-  else if(absR >= 0.3) forca = 'moderada';
-  else if(absR >= 0.1) forca = 'fraca';
   const direcao = r >= 0 ? 'positiva' : 'negativa';
-  const stars = Stats.stars(corr.p);
 
-  const interp = `
+  document.getElementById('scatter-kpis').innerHTML = `
     <div class="kpi-grid mt-20" style="grid-template-columns: repeat(4, 1fr);">
       <div class="kpi highlight">
         <div class="kpi-label">r de Pearson</div>
-        <div class="kpi-value">${Stats.fmt(r, 3).replace('.', ',')}</div>
-        <div class="kpi-sub">${stars}</div>
+        <div class="kpi-value">${Stats.fmtBr(r, 3)}</div>
+        <div class="kpi-sub">${Stats.stars(corr.p)}</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">t</div>
-        <div class="kpi-value">${Stats.fmt(corr.t, 2).replace('.', ',')}</div>
+        <div class="kpi-value">${Stats.fmtBr(corr.t, 2)}</div>
         <div class="kpi-sub">gl = ${n-2}</div>
       </div>
       <div class="kpi">
@@ -215,54 +170,76 @@ function showScatter(xVar, yVar){
         <div class="kpi-value">${Stats.fmtP(corr.p)}</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">N</div>
-        <div class="kpi-value">${n}</div>
+        <div class="kpi-label">r² compartilhado</div>
+        <div class="kpi-value">${(r*r*100).toFixed(1).replace('.',',')}%</div>
       </div>
     </div>
+  `;
+
+  // Régua de tamanho de efeito
+  document.getElementById('effect-ruler-container').innerHTML = WC.renderEffectRuler(absR, 'r', {
+    label: 'Magnitude do |r|', ref: 'Cohen, 1988'
+  });
+
+  document.getElementById('scatter-interpret').innerHTML = `
     <div class="interp-box">
-      Há uma associação <strong>${forca}</strong> e <strong>${direcao}</strong> entre <strong>${xVar}</strong> e <strong>${yVar}</strong>
-      (r = ${Stats.fmt(r,2).replace('.',',')}, p ${Stats.fmtP(corr.p).replace('< ','&lt; ')}).
+      Há uma associação <strong>${Stats.classify(absR, 'r').toLowerCase()}</strong> e <strong>${direcao}</strong> entre
+      <strong>${xVar}</strong> e <strong>${yVar}</strong>
+      (r = ${Stats.fmtBr(r,2)}, p ${Stats.fmtP(corr.p).replace('< ','&lt; ')}).
       Cerca de <strong>${(r*r*100).toFixed(1).replace('.',',')}%</strong> da variância de ${yVar} é compartilhada com ${xVar}
       (coeficiente de determinação r²).
     </div>
   `;
-  document.getElementById('scatter-interpret').innerHTML = interp;
 }
 
 // CSV upload
 document.getElementById('csv-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(!file) return;
+  const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const parsed = Stats.parseCSV(ev.target.result);
-      const numericVars = parsed.headers.filter(h => {
-        return parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h]));
-      });
-      if(numericVars.length < 2){
-        alert('CSV precisa ter ao menos 2 colunas numéricas.');
-        return;
-      }
-      DATA = parsed.rows;
-      VARS = numericVars;
+      const numericVars = parsed.headers.filter(h => parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h])));
+      if(numericVars.length < 2){ alert('CSV precisa ter ao menos 2 colunas numéricas.'); return; }
+      DATA = parsed.rows; VARS = numericVars;
       document.getElementById('data-source').textContent = `CSV "${file.name}" (N = ${DATA.length}, vars numéricas = ${VARS.length})`;
       document.getElementById('scatter-container').innerHTML = '';
+      document.getElementById('scatter-kpis').innerHTML = '';
+      document.getElementById('effect-ruler-container').innerHTML = '';
       document.getElementById('scatter-interpret').innerHTML = '';
-      document.getElementById('scatter-title').textContent = 'Diagrama de Dispersão';
-      document.getElementById('scatter-subtitle').textContent = 'Selecione uma célula da matriz.';
       buildMatrix();
-    } catch(err){
-      alert('Erro ao ler CSV: ' + err.message);
-    }
+    } catch(err){ alert('Erro: ' + err.message); }
   };
   reader.readAsText(file);
 });
 
-// Inicializar
+// Quiz
+document.getElementById('quiz-container').innerHTML = WC.renderQuiz([
+  {
+    q: 'Qual destas correlações indica a associação <em>mais forte</em>?',
+    options: [
+      { label: 'r = 0,28', correct: false, explain: 'r = 0,28 é considerada uma correlação pequena (Cohen, 1988). É a magnitude absoluta de r que conta — independentemente do sinal.' },
+      { label: 'r = –0,55', correct: true, explain: 'Exato — pelo critério de Cohen (1988), |r| ≥ 0,50 é considerado um efeito grande. O sinal negativo apenas indica a direção (associação inversa).' },
+      { label: 'r = 0,40', correct: false, explain: 'r = 0,40 é moderada (Cohen, 1988), mas há uma opção com magnitude maior.' }
+    ]
+  },
+  {
+    q: 'Se duas variáveis têm r = 0,40, qual percentual da variância elas compartilham?',
+    options: [
+      { label: '40%', correct: false, explain: 'Não — esse é o r, não o coeficiente de determinação. A variância compartilhada é r² × 100%.' },
+      { label: '16%', correct: true, explain: 'Correto. r² = 0,40² = 0,16, ou seja, 16% da variância é compartilhada.' },
+      { label: '80%', correct: false, explain: 'Essa é uma sobrestimativa. A variância compartilhada é r², não 2r.' }
+    ]
+  }
+], { subtitle: 'Duas questões rápidas para fixar.' });
+
 buildMatrix();
-// Abrir com VI1 x VD1
 showScatter('VI1', 'VD1');
 </script>
+<!-- Cloudflare Web Analytics — INSTRUÇÕES no guia de uso (PDF/DOCX).
+     1) Crie conta gratuita em dash.cloudflare.com
+     2) Web Analytics → Add a site → cadastre [seu-usuario].github.io
+     3) Cole o token aqui no lugar de COLE_SEU_TOKEN_AQUI e descomente a linha abaixo. -->
+<!-- <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;COLE_SEU_TOKEN_AQUI&quot;}"></script> -->
 </body>
 </html>

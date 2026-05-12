@@ -1,8 +1,8 @@
 /* =====================================================================
-   stats.js — Biblioteca didática de estatística para regressão
-   Implementa: OLS via decomposição, VIF, Breusch-Pagan, Durbin-Watson,
-   Jarque-Bera, distribuições t/F/chi2/normal (aproximações fechadas).
-   Sem dependências externas. Numericamente OK para N até alguns milhares.
+   stats.js — v2 — Biblioteca didática de estatística para regressão
+   Agora com: classificadores de tamanho de efeito (Cohen 1988),
+   f² incremento, classificação Aguinis et al. (2005) para moderação,
+   cálculo de N mínimo (Cohen 1988; Green 1991) e copy-to-clipboard.
    ===================================================================== */
 
 (function(global){
@@ -27,13 +27,12 @@
       num += a*b; dx2 += a*a; dy2 += b*b;
     }
     const r = num / Math.sqrt(dx2*dy2);
-    // p-valor (teste t)
     const t = r * Math.sqrt((n-2)/(1-r*r));
     const p = 2*(1 - tCDF(Math.abs(t), n-2));
     return { r, p, t, n };
   }
 
-  // ===== Álgebra linear (matrizes pequenas, N estável) =====
+  // ===== Álgebra linear =====
   function transpose(M){
     const r = M.length, c = M[0].length;
     const T = Array.from({length: c}, () => new Array(r));
@@ -59,12 +58,10 @@
     }
     return out;
   }
-  // Inversa via Gauss-Jordan com pivoteamento parcial
   function matInv(M){
     const n = M.length;
     const A = M.map((row,i)=>row.slice().concat(Array.from({length:n}, (_,j)=> i===j?1:0)));
     for(let i=0;i<n;i++){
-      // pivot
       let maxRow=i, maxVal=Math.abs(A[i][i]);
       for(let k=i+1;k<n;k++){
         if(Math.abs(A[k][i])>maxVal){ maxRow=k; maxVal=Math.abs(A[k][i]); }
@@ -84,7 +81,6 @@
   }
 
   // ===== Distribuições =====
-  // Função erro (Abramowitz & Stegun)
   function erf(x){
     const s = Math.sign(x); x = Math.abs(x);
     const a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
@@ -93,8 +89,6 @@
     return s*y;
   }
   function normalCDF(z){ return 0.5*(1 + erf(z/Math.SQRT2)); }
-
-  // log-gamma (Stirling)
   function lgamma(x){
     const cof = [76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
     let y=x, tmp=x+5.5;
@@ -103,8 +97,6 @@
     for(let j=0;j<6;j++){ y+=1; ser += cof[j]/y; }
     return -tmp + Math.log(2.5066282746310005*ser/x);
   }
-
-  // beta incompleta regularizada (Numerical Recipes)
   function betacf(a,b,x){
     const MAXIT=200, EPS=3.0e-12, FPMIN=1.0e-30;
     const qab=a+b, qap=a+1, qam=a-1;
@@ -132,21 +124,17 @@
     if(x < (a+1)/(a+b+2)) return bt*betacf(a,b,x)/a;
     else return 1 - bt*betacf(b,a,1-x)/b;
   }
-
-  // CDF da t-Student
   function tCDF(t, df){
     if(df<=0) return NaN;
     const x = df/(df + t*t);
     const p = 0.5 * betai(df/2, 0.5, x);
     return t >= 0 ? 1 - p : p;
   }
-  // CDF F
   function fCDF(f, df1, df2){
     if(f<=0) return 0;
     const x = (df1*f)/(df1*f + df2);
     return betai(df1/2, df2/2, x);
   }
-  // CDF chi-quadrado (via série incomp. gamma de Numerical Recipes)
   function gser(a,x){
     const ITMAX=200, EPS=3e-12;
     if(x<=0) return 0;
@@ -175,10 +163,7 @@
     else return 1 - gcf(a,x);
   }
   function chi2CDF(x, df){ return gammp(df/2, x/2); }
-
-  // Inversa da t (para IC) — método de Newton sobre tCDF
   function tInv(p, df){
-    // chute inicial via aproximação normal
     let z = normalInv(p);
     let x = z + (z*z*z + z)/(4*df);
     for(let i=0;i<20;i++){
@@ -191,7 +176,6 @@
     return x;
   }
   function normalInv(p){
-    // Beasley-Springer-Moro
     const a=[-3.969683028665376e+1,2.209460984245205e+2,-2.759285104469687e+2,1.383577518672690e+2,-3.066479806614716e+1,2.506628277459239];
     const b=[-5.447609879822406e+1,1.615858368580409e+2,-1.556989798598866e+2,6.680131188771972e+1,-1.328068155288572e+1];
     const c=[-7.784894002430293e-3,-3.223964580411365e-1,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783];
@@ -205,14 +189,11 @@
   }
 
   // ===== OLS =====
-  // X: matriz n×p (sem coluna de constante); intercept: bool
   function ols(X, y, options={}){
     const intercept = options.intercept !== false;
     const n = y.length;
-    const p0 = X[0].length;
-    // monta X com coluna 1
     const Xa = X.map((row,i) => intercept ? [1].concat(row) : row.slice());
-    const k = Xa[0].length; // num parâmetros (inclui intercepto)
+    const k = Xa[0].length;
     const Xt = transpose(Xa);
     const XtX = matMul(Xt, Xa);
     const Xty = matVec(Xt, y);
@@ -230,30 +211,17 @@
     const df_mod = k - (intercept ? 1 : 0);
     const sigma2 = rss / df_res;
     const r2adj = 1 - (1-r2) * (n-1)/df_res;
-    // EP e t
     const se = beta.map((b,i) => Math.sqrt(sigma2 * XtXi[i][i]));
     const tvals = beta.map((b,i) => b/se[i]);
     const pvals = tvals.map(t => 2*(1 - tCDF(Math.abs(t), df_res)));
     const tcrit = tInv(0.975, df_res);
     const ciLow  = beta.map((b,i) => b - tcrit*se[i]);
     const ciHigh = beta.map((b,i) => b + tcrit*se[i]);
-    // F do modelo
     const f = (r2/df_mod) / ((1-r2)/df_res);
     const fp = 1 - fCDF(f, df_mod, df_res);
-
-    return {
-      n, k, df_mod, df_res,
-      beta, se, t: tvals, p: pvals, ciLow, ciHigh,
-      fitted, residuals,
-      r2, r2adj, sigma2, rss, tss,
-      f, fp,
-      X: Xa, XtXi,
-      hasIntercept: intercept
-    };
+    return { n, k, df_mod, df_res, beta, se, t: tvals, p: pvals, ciLow, ciHigh, fitted, residuals, r2, r2adj, sigma2, rss, tss, f, fp, X: Xa, XtXi, hasIntercept: intercept };
   }
 
-  // ===== VIF =====
-  // Para cada coluna j em X (sem intercepto), roda OLS de Xj nas demais
   function vifAll(X){
     const p = X[0].length;
     const out = [];
@@ -263,13 +231,11 @@
       if(Xr[0].length === 0){ out.push(1); continue; }
       const res = ols(Xr, y);
       if(res.error){ out.push(NaN); continue; }
-      const vif = 1 / (1 - res.r2);
-      out.push(vif);
+      out.push(1 / (1 - res.r2));
     }
     return out;
   }
 
-  // ===== Diagnósticos =====
   function durbinWatson(resid){
     let num=0, den=0;
     for(let i=1;i<resid.length;i++){
@@ -279,9 +245,7 @@
     for(let i=0;i<resid.length;i++) den += resid[i]*resid[i];
     return num/den;
   }
-
   function breuschPagan(model){
-    // regredir resid^2 (escalado) em X; estat. = n * R²_aux ~ χ²(p-1)
     const n = model.n;
     const e2 = model.residuals.map(r => r*r);
     const sigma_hat2 = sum(e2)/n;
@@ -290,14 +254,11 @@
     if(X_no_int[0].length === 0) return { lm: NaN, p: NaN, df: 0 };
     const aux = ols(X_no_int, u);
     if(aux.error) return { lm: NaN, p: NaN, df: 0 };
-    // versão clássica: LM = (1/2) * SSR_explained com resid² centrado, ou simplificada:
-    // Koenker (1981): n * R²_aux
     const lm = n * aux.r2;
     const df = X_no_int[0].length;
     const p = 1 - chi2CDF(lm, df);
     return { lm, p, df };
   }
-
   function jarqueBera(resid){
     const n = resid.length;
     const m = mean(resid);
@@ -313,10 +274,7 @@
     const p = 1 - chi2CDF(jb, 2);
     return { jb, p, skew, kurt };
   }
-
   function cooksDistance(model){
-    // D_i = (e_i² / (k*sigma²)) * (h_ii / (1-h_ii)²)
-    // h_ii = diag(X (X'X)^-1 X')
     const X = model.X;
     const n = model.n, k = model.k;
     const sigma2 = model.sigma2;
@@ -325,7 +283,6 @@
     const H = new Array(n);
     for(let i=0;i<n;i++){
       const xi = X[i];
-      // h_ii = xi' * XtXi * xi
       let h=0;
       for(let a=0;a<k;a++){
         let row=0;
@@ -339,7 +296,6 @@
     return { D, H };
   }
 
-  // ===== CSV parser simples =====
   function parseCSV(text){
     const lines = text.trim().split(/\r?\n/);
     const headers = lines[0].split(/[,;\t]/).map(s => s.trim());
@@ -358,13 +314,11 @@
     return { headers, rows };
   }
 
-  // ===== Centralizar e padronizar =====
   function center(arr){ const m=mean(arr); return arr.map(v => v-m); }
   function zscore(arr){ const m=mean(arr), s=std(arr); return arr.map(v => (v-m)/s); }
 
-  // ===== Formatadores =====
   function fmt(x, d=3){
-    if(x===null||x===undefined||isNaN(x)) return '—';
+    if(x===null||x===undefined||isNaN(x)||!isFinite(x)) return '—';
     if(Math.abs(x) < 0.001 && x !== 0) return x.toExponential(2);
     return x.toFixed(d);
   }
@@ -373,6 +327,7 @@
     if(p < 0.001) return '< 0,001';
     return p.toFixed(3).replace('.', ',');
   }
+  function fmtBr(x, d=3){ return fmt(x,d).replace('.', ','); }
   function stars(p){
     if(p < 0.001) return '***';
     if(p < 0.01)  return '**';
@@ -381,16 +336,69 @@
     return '';
   }
 
-  // Expor
+  // ===== TAMANHOS DE EFEITO =====
+  const EFFECT_BANDS = {
+    r:        [{upper:0.10,label:'Trivial'},{upper:0.30,label:'Pequeno'},{upper:0.50,label:'Médio'},{upper:Infinity,label:'Grande'}],
+    r2:       [{upper:0.02,label:'Trivial'},{upper:0.13,label:'Pequeno'},{upper:0.26,label:'Médio'},{upper:Infinity,label:'Grande'}],
+    f2:       [{upper:0.02,label:'Trivial'},{upper:0.15,label:'Pequeno'},{upper:0.35,label:'Médio'},{upper:Infinity,label:'Grande'}],
+    f2_mod:   [{upper:0.005,label:'Trivial'},{upper:0.01,label:'Pequeno'},{upper:0.025,label:'Médio'},{upper:Infinity,label:'Grande'}],
+    vif:      [{upper:5,label:'Confortável'},{upper:10,label:'Atenção'},{upper:Infinity,label:'Crítico'}],
+    skewness: [{upper:1,label:'OK'},{upper:2,label:'Atenção'},{upper:Infinity,label:'Severo'}],
+    kurtosis: [{upper:3,label:'OK'},{upper:7,label:'Atenção'},{upper:Infinity,label:'Severo'}]
+  };
+
+  function classify(value, kindOrBands){
+    const bands = typeof kindOrBands === 'string' ? EFFECT_BANDS[kindOrBands] : kindOrBands;
+    const v = Math.abs(value);
+    for(let i=0;i<bands.length;i++) if(v < bands[i].upper) return bands[i].label;
+    return bands[bands.length-1].label;
+  }
+  function cohenF2(r2){ return (r2 < 1 && r2 >= 0) ? r2/(1-r2) : Infinity; }
+  function f2Increment(r2New, r2Old){
+    if(r2New >= 1) return Infinity;
+    return (r2New - r2Old) / (1 - r2New);
+  }
+  function r2Shared(r){ return r*r; }
+  function classifyDW(dw){
+    if(dw >= 1.5 && dw <= 2.5) return 'OK';
+    if((dw >= 1.2 && dw < 1.5) || (dw > 2.5 && dw <= 2.8)) return 'Atenção';
+    return 'Severo';
+  }
+  function leverageCutoff(k, n, multiplier=2){ return multiplier * k / n; }
+
+  // ===== N MÍNIMO =====
+  function nMinCohen(k){ return 50 + 8*k; }
+  function nMinGreenModel(k){ return 50 + 8*k; }
+  function nMinGreenPredictor(k){ return 104 + k; }
+  function powerVerdict(n, k){
+    const reqModel = nMinGreenModel(k);
+    const reqPred  = nMinGreenPredictor(k);
+    return { n, k, reqModel, reqPred, meetsModel: n>=reqModel, meetsPred: n>=reqPred, gapModel: n-reqModel, gapPred: n-reqPred };
+  }
+
+  function copyToClipboard(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); try { document.execCommand('copy'); } catch(e){}
+      document.body.removeChild(ta);
+      return Promise.resolve();
+    }
+  }
+
   global.Stats = {
     mean, variance, std, sum, correlation,
     transpose, matMul, matVec, matInv,
-    erf, normalCDF, normalInv,
-    tCDF, fCDF, chi2CDF, tInv,
-    ols, vifAll,
-    durbinWatson, breuschPagan, jarqueBera, cooksDistance,
+    erf, normalCDF, normalInv, tCDF, fCDF, chi2CDF, tInv,
+    ols, vifAll, durbinWatson, breuschPagan, jarqueBera, cooksDistance,
     parseCSV, center, zscore,
-    fmt, fmtP, stars
+    fmt, fmtP, fmtBr, stars,
+    EFFECT_BANDS, classify,
+    cohenF2, f2Increment, r2Shared, classifyDW, leverageCutoff,
+    nMinCohen, nMinGreenModel, nMinGreenPredictor, powerVerdict,
+    copyToClipboard
   };
 
 })(window);

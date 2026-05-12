@@ -7,20 +7,21 @@
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/dados.js"></script>
 <script src="assets/stats.js"></script>
+<script src="assets/widgets-common.js"></script>
 </head>
 <body>
 <div class="container">
 
   <header class="widget-header">
     <a href="index.html" class="home-link">← Jornada</a>
-    <div class="breadcrumb">Estágio V · de V · Diagnóstico</div>
+    <div class="breadcrumb">Estágio V · de V · Diagnósticos</div>
     <h1>Pressupostos da Regressão</h1>
-    <div class="subtitle">Defina um modelo (incluindo interações, se quiser) e veja todos os cinco pressuposições da regressão linear testados ao mesmo tempo: normalidade (Jarque-Bera + QQ-plot), homocedasticidade (Breusch-Pagan + resíduos vs ajustados), independência (Durbin-Watson), ausência de multicolinearidade (VIF) e ausência de outliers/observações influentes (Cook's D + leverage).</div>
+    <div class="subtitle">Antes de aceitar qualquer modelo, verifique seus pressupostos. Aqui temos: normalidade dos resíduos (Jarque-Bera, assimetria, curtose), homocedasticidade (Breusch-Pagan), independência (Durbin-Watson), multicolinearidade (VIF), observações influentes (Cook's D, leverage). As réguas mostram os cutoffs canônicos com suas referências.</div>
   </header>
 
   <div class="panel">
-    <h3 class="panel-title">Dados</h3>
-    <div class="grid-2" style="grid-template-columns: 1fr 1fr;">
+    <h3 class="panel-title">Dados e Modelo</h3>
+    <div class="grid-equal-2">
       <div>
         <label class="control-label">Fonte ativa</label>
         <div id="data-source" class="mono" style="font-size: 13px; color: var(--ink-soft);">Banco pré-carregado (N = 180)</div>
@@ -30,76 +31,60 @@
         <input type="file" id="csv-input" accept=".csv,.txt">
       </div>
     </div>
-  </div>
-
-  <div class="grid-2">
-    <div class="panel">
-      <h3 class="panel-title">Especificação do Modelo</h3>
+    <hr class="soft">
+    <div class="grid-equal-2">
       <div class="control-group">
-        <label class="control-label">VD (Y)</label>
-        <select id="y-select"></select>
+        <label class="control-label">VD</label>
+        <select id="vd-select"></select>
       </div>
-      <div class="control-group">
+      <div>
         <label class="control-label">Preditores</label>
-        <div class="checkbox-list" id="pred-list"></div>
+        <div class="checkbox-list" id="vi-list" style="max-height: 180px; overflow-y: auto;"></div>
       </div>
-      <div class="control-group">
-        <label class="control-label">Interação (opcional)</label>
-        <div class="grid-2" style="grid-template-columns: 1fr 1fr; gap: 8px;">
-          <select id="int-x"><option value="">— X —</option></select>
-          <select id="int-w"><option value="">— W —</option></select>
-        </div>
-        <div class="muted mt-12" style="font-size: 11.5px;">Se selecionar X e W, será incluído o termo X×W (centralizado).</div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h3 class="panel-title">Resumo do Modelo</h3>
-      <div id="model-kpis"></div>
     </div>
   </div>
 
   <div class="panel">
-    <h3 class="panel-title">Painel de Pressupostos</h3>
-    <div class="grid-3" id="assumption-cards"></div>
-  </div>
-
-  <div class="grid-2">
-
-    <div class="panel">
-      <h3 class="panel-title">Normalidade dos Resíduos</h3>
-      <div class="panel-subtitle">QQ-plot dos resíduos contra a normal padrão. Quanto mais alinhados com a diagonal, mais próximo da normalidade.</div>
-      <div id="qq-container"></div>
-    </div>
-
-    <div class="panel">
-      <h3 class="panel-title">Homocedasticidade</h3>
-      <div class="panel-subtitle">Resíduos vs valores ajustados. Sem padrão funil = variância constante.</div>
-      <div id="resid-fitted"></div>
-    </div>
-
-    <div class="panel">
-      <h3 class="panel-title">Multicolinearidade — VIFs</h3>
-      <div class="panel-subtitle">VIF &lt; 5 confortável. 5–10 atenção. ≥ 10 crítico.</div>
-      <div id="vif-table"></div>
-    </div>
-
-    <div class="panel">
-      <h3 class="panel-title">Outliers e Influência</h3>
-      <div class="panel-subtitle">Cook's D vs índice da observação. Linha de corte: 4/N.</div>
-      <div id="cook-container"></div>
-    </div>
-
+    <h3 class="panel-title">Painel de Diagnósticos</h3>
+    <div id="diagnostics-grid" class="grid-3"></div>
   </div>
 
   <div class="panel">
-    <h3 class="panel-title">Veredicto</h3>
-    <div id="verdict-content"></div>
+    <h3 class="panel-title">Réguas dos cutoffs</h3>
+    <div class="panel-subtitle">As bandas mostram onde seu valor cai segundo cada autor.</div>
+    <div id="rulers-container"></div>
   </div>
+
+  <div class="grid-equal-2">
+    <div class="panel">
+      <h3 class="panel-title">Resíduos vs. Valores Ajustados</h3>
+      <div class="panel-subtitle">Para inspeção visual de homocedasticidade. Padrão ideal: nuvem aleatória em torno de 0.</div>
+      <div id="resid-fit"></div>
+    </div>
+    <div class="panel">
+      <h3 class="panel-title">Q-Q Plot dos Resíduos</h3>
+      <div class="panel-subtitle">Pontos alinhados na diagonal indicam normalidade.</div>
+      <div id="qq-plot"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Cook's D — Observações Influentes</h3>
+    <div class="panel-subtitle">Duas regras canônicas: <strong>4/N</strong> (mais conservadora, sinaliza muitas observações) e <strong>D > 1</strong> (Cook & Weisberg, 1982; só sinaliza casos realmente extremos).</div>
+    <div id="cook-plot"></div>
+    <div id="cook-summary"></div>
+  </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Síntese narrativa (APA)</h3>
+    <div id="apa-container"></div>
+  </div>
+
+  <div id="quiz-container"></div>
 
   <footer class="widget-footer">
     <div class="glyph">✦ ✦ ✦ ✦ ✦</div>
-    <div>Fim da jornada · Volte ao <a href="index.html" style="color: var(--gold);">mapa</a> ou prossiga para a análise no software de sua preferência.</div>
+    <div>Estágio V de V · Fim da jornada · <a href="referencias.html">Referências bibliográficas completas</a></div>
   </footer>
 
 </div>
@@ -107,307 +92,292 @@
 <script>
 let DATA = window.BANCO_180;
 let ALL_VARS = ['VI1','VI2','VI3','W1','VD1','VD2'];
+const DEFAULT_VIS = ['VI1','VI2','VI3','W1'];
+const DEFAULT_VDS = ['VD1','VD2'];
+let currentVD = 'VD1';
+let currentVIs = ['VI1','VI2','VI3','W1'];
 
-function populateUI(){
-  const ySel = document.getElementById('y-select');
-  const predList = document.getElementById('pred-list');
-  const intX = document.getElementById('int-x');
-  const intW = document.getElementById('int-w');
-  ySel.innerHTML = ''; predList.innerHTML = '';
-  intX.innerHTML = '<option value="">— X —</option>';
-  intW.innerHTML = '<option value="">— W —</option>';
-
-  const vds = (DATA === window.BANCO_180) ? ['VD1','VD2'] : ALL_VARS;
-  vds.forEach(v => ySel.innerHTML += `<option value="${v}">${v}</option>`);
-  ySel.value = vds[0];
-
-  const preds = (DATA === window.BANCO_180) ? ['VI1','VI2','VI3','W1'] : ALL_VARS;
-  preds.forEach(v => {
-    if(v === ySel.value) return;
-    const defChecked = (DATA === window.BANCO_180) ? 'checked' : '';
-    predList.innerHTML += `<label><input type="checkbox" value="${v}" ${defChecked} onchange="compute()"><span>${v}</span></label>`;
-    intX.innerHTML += `<option value="${v}">${v}</option>`;
-    intW.innerHTML += `<option value="${v}">${v}</option>`;
+function populateLists(){
+  const vdSel = document.getElementById('vd-select');
+  const viList = document.getElementById('vi-list');
+  vdSel.innerHTML = ''; viList.innerHTML = '';
+  const isDefault = (DATA === window.BANCO_180);
+  const vds = isDefault ? DEFAULT_VDS : ALL_VARS;
+  const vis = isDefault ? DEFAULT_VIS : ALL_VARS.filter(v => v !== currentVD);
+  vds.forEach(v => vdSel.innerHTML += `<option value="${v}" ${v===currentVD?'selected':''}>${v}</option>`);
+  vis.forEach(v => {
+    if(v === currentVD) return;
+    viList.innerHTML += `<label><input type="checkbox" value="${v}" ${currentVIs.includes(v)?'checked':''} onchange="toggleVI('${v}', this.checked)"><span>${v}</span></label>`;
   });
-  if(DATA === window.BANCO_180){
-    intX.value = 'VI1';
-    intW.value = 'W1';
-  }
+}
+function toggleVI(v, on){
+  if(on) currentVIs.push(v);
+  else currentVIs = currentVIs.filter(x => x !== v);
+  compute();
+}
+document.getElementById('vd-select').addEventListener('change', e => {
+  currentVD = e.target.value;
+  currentVIs = currentVIs.filter(p => p !== currentVD);
+  populateLists(); compute();
+});
+
+function badge(label, status){
+  const cls = status === 'pass' ? 'ok' : (status === 'warn' ? 'warn' : 'bad');
+  return `<span class="badge ${cls}">${label}</span>`;
 }
 
 function compute(){
-  const yV = document.getElementById('y-select').value;
-  const preds = Array.from(document.querySelectorAll('#pred-list input:checked')).map(i => i.value);
-  const intX = document.getElementById('int-x').value;
-  const intW = document.getElementById('int-w').value;
-
-  if(preds.length === 0){
-    document.getElementById('model-kpis').innerHTML = `<div class="muted text-center" style="padding: 20px 0;">Selecione preditores.</div>`;
-    document.getElementById('assumption-cards').innerHTML = '';
-    ['qq-container','resid-fitted','vif-table','cook-container','verdict-content'].forEach(id => document.getElementById(id).innerHTML = '');
+  if(currentVIs.length === 0){
+    document.getElementById('diagnostics-grid').innerHTML = `<div class="muted">Selecione pelo menos um preditor.</div>`;
     return;
   }
+  const y = DATA.map(r => r[currentVD]);
+  const X = DATA.map(r => currentVIs.map(v => r[v]));
+  const m = Stats.ols(X, y);
+  if(m.error){ document.getElementById('diagnostics-grid').innerHTML = `<div class="badge bad">${m.error}</div>`; return; }
 
-  const y = DATA.map(r => r[yV]);
-  // Centralizar todos os preditores
-  const centeredPreds = preds.map(p => Stats.center(DATA.map(r => r[p])));
-  let termNames = preds.slice();
-
-  let Xmat = [];
-  for(let i=0;i<y.length;i++){
-    Xmat.push(centeredPreds.map(arr => arr[i]));
-  }
-  // Adicionar interação se especificada
-  let hasInteraction = false;
-  if(intX && intW && intX !== intW && preds.includes(intX) && preds.includes(intW)){
-    const xc = Stats.center(DATA.map(r => r[intX]));
-    const wc = Stats.center(DATA.map(r => r[intW]));
-    for(let i=0;i<y.length;i++) Xmat[i].push(xc[i]*wc[i]);
-    termNames.push(`${intX}×${intW}`);
-    hasInteraction = true;
-  }
-
-  const m = Stats.ols(Xmat, y);
-  if(m.error){
-    document.getElementById('model-kpis').innerHTML = `<div class="badge bad">${m.error}</div>`;
-    return;
-  }
-
-  // Resumo modelo
-  document.getElementById('model-kpis').innerHTML = `
-    <div class="kpi-grid">
-      <div class="kpi highlight">
-        <div class="kpi-label">R²</div>
-        <div class="kpi-value">${Stats.fmt(m.r2,3).replace('.',',')}</div>
-        <div class="kpi-sub">R²ₐⱼ = ${Stats.fmt(m.r2adj,3).replace('.',',')}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">F</div>
-        <div class="kpi-value">${Stats.fmt(m.f,2).replace('.',',')}</div>
-        <div class="kpi-sub">p = ${Stats.fmtP(m.fp)}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">N</div>
-        <div class="kpi-value">${m.n}</div>
-        <div class="kpi-sub">k = ${termNames.length}</div>
-      </div>
-    </div>
-    <div class="mt-12 mono muted" style="font-size: 12.5px;">
-      <strong>${yV}</strong> ~ ${termNames.join(' + ')}${hasInteraction ? ' <span style="color: var(--gold)">(c/ interação)</span>' : ''}
-    </div>
-  `;
-
-  // === Diagnósticos ===
   const jb = Stats.jarqueBera(m.residuals);
   const bp = Stats.breuschPagan(m);
   const dw = Stats.durbinWatson(m.residuals);
-  const vifs = termNames.length >= 2 ? Stats.vifAll(Xmat) : [1];
+  const cook = Stats.cooksDistance(m);
+  const vifs = currentVIs.length >= 2 ? Stats.vifAll(X) : [1];
   const maxVIF = Math.max(...vifs);
-  const cooks = Stats.cooksDistance(m);
-  const cookCut = 4 / m.n;
-  const nInfluential = cooks.D.filter(d => d > cookCut).length;
+  const cookCutoff4N = 4 / m.n;
+  const leverageCutoff = Stats.leverageCutoff(currentVIs.length + 1, m.n, 2);
+  const nInfluential4N = cook.D.filter(d => d > cookCutoff4N).length;
+  const nInfluentialD1 = cook.D.filter(d => d > 1).length;
+  const nHighLeverage = cook.H.filter(h => h > leverageCutoff).length;
 
-  function statusOf(test, pass, warn, fail){
-    if(pass) return { cls: 'pass', icon: '✓', txt: 'OK' };
-    if(warn) return { cls: 'warn', icon: '!', txt: 'Atenção' };
-    return { cls: 'fail', icon: '✗', txt: 'Violado' };
-  }
-  const sNorm = statusOf('jb', jb.p >= 0.05, jb.p >= 0.01, false);
-  const sHet  = statusOf('bp', bp.p >= 0.05, bp.p >= 0.01, false);
-  const sInd  = statusOf('dw', dw >= 1.5 && dw <= 2.5, (dw >= 1.2 && dw < 1.5) || (dw > 2.5 && dw <= 2.8), false);
-  const sMC   = statusOf('vif', maxVIF < 5, maxVIF < 10, false);
-  const sOut  = statusOf('cook', nInfluential === 0, nInfluential / m.n < 0.05, false);
+  // Cards de diagnóstico
+  const jbStatus = jb.p >= 0.05 ? 'pass' : (jb.p >= 0.01 ? 'warn' : 'fail');
+  const bpStatus = bp.p >= 0.05 ? 'pass' : (bp.p >= 0.01 ? 'warn' : 'fail');
+  const dwStatus = (dw >= 1.5 && dw <= 2.5) ? 'pass' : ((dw >= 1.2 && dw < 1.5) || (dw > 2.5 && dw <= 2.8) ? 'warn' : 'fail');
+  const vifStatus = maxVIF < 5 ? 'pass' : (maxVIF < 10 ? 'warn' : 'fail');
+  const cookStatus = nInfluentialD1 > 0 ? 'fail' : (nInfluential4N > m.n*0.05 ? 'warn' : 'pass');
+  const skewStatus = Math.abs(jb.skew) < 1 ? 'pass' : (Math.abs(jb.skew) < 2 ? 'warn' : 'fail');
+  const kurtStatus = Math.abs(jb.kurt) < 3 ? 'pass' : (Math.abs(jb.kurt) < 7 ? 'warn' : 'fail');
+  const levStatus = nHighLeverage < m.n*0.05 ? 'pass' : 'warn';
 
-  // Cards
-  document.getElementById('assumption-cards').innerHTML = `
-    ${assumptionCard('Normalidade dos resíduos', sNorm,
-      `Jarque-Bera = ${Stats.fmt(jb.jb,2)} · p = ${Stats.fmtP(jb.p)}`,
-      `Assimetria = ${Stats.fmt(jb.skew,2)} · Curtose = ${Stats.fmt(jb.kurt,2)}`)}
-    ${assumptionCard('Homocedasticidade', sHet,
-      `Breusch-Pagan LM = ${Stats.fmt(bp.lm,2)} · p = ${Stats.fmtP(bp.p)}`,
-      `Variância dos resíduos ${sHet.cls==='pass'?'parece constante':'pode variar'} ao longo dos ajustados`)}
-    ${assumptionCard('Independência dos resíduos', sInd,
-      `Durbin-Watson = ${Stats.fmt(dw,2)}`,
-      `Valor ideal próximo a 2; ${dw < 1.5 ? 'sugere autocorrelação positiva' : dw > 2.5 ? 'sugere autocorrelação negativa' : 'sem evidência de autocorrelação'}`)}
-    ${assumptionCard('Multicolinearidade', sMC,
-      `VIF máximo = ${Stats.fmt(maxVIF,2)}`,
-      `Critério: < 5 ok · 5–10 atenção · ≥ 10 crítico`)}
-    ${assumptionCard('Outliers influentes', sOut,
-      `${nInfluential} observação(ões) com Cook's D > 4/N`,
-      `4/N = ${cookCut.toFixed(4)} · ${((1 - nInfluential/m.n)*100).toFixed(1)}% dentro do esperado`)}
+  document.getElementById('diagnostics-grid').innerHTML = `
+    <div class="assumption-card ${jbStatus}">
+      <h4>Normalidade dos resíduos ${badge(jbStatus==='pass'?'atendida':(jbStatus==='warn'?'atenção':'violada'), jbStatus)}</h4>
+      <div class="stat">Jarque-Bera = ${Stats.fmtBr(jb.jb,2)}, gl = 2, p = ${Stats.fmtP(jb.p)}</div>
+      <div class="stat">Assimetria = ${Stats.fmtBr(jb.skew,3)} · Curtose = ${Stats.fmtBr(jb.kurt,3)}</div>
+      <div class="interp">H₀: resíduos normais. p ≥ 0,05 = não rejeita normalidade. ${WC.cite('Curran et al., 1996', 'Curran, P. J., West, S. G., & Finch, J. F. (1996). The robustness of test statistics to nonnormality and specification error in confirmatory factor analysis. Psychological Methods, 1(1), 16–29.')}</div>
+    </div>
+    <div class="assumption-card ${bpStatus}">
+      <h4>Homocedasticidade ${badge(bpStatus==='pass'?'atendida':(bpStatus==='warn'?'atenção':'violada'), bpStatus)}</h4>
+      <div class="stat">Breusch-Pagan LM = ${Stats.fmtBr(bp.lm,2)}, gl = ${bp.df}, p = ${Stats.fmtP(bp.p)}</div>
+      <div class="interp">H₀: variância dos resíduos é constante. p ≥ 0,05 = homocedástico. ${WC.cite('Breusch & Pagan, 1979', 'Breusch, T. S., & Pagan, A. R. (1979). A simple test for heteroscedasticity and random coefficient variation. Econometrica, 47(5), 1287–1294.')}</div>
+    </div>
+    <div class="assumption-card ${dwStatus}">
+      <h4>Independência (Durbin-Watson) ${badge(dwStatus==='pass'?'atendida':(dwStatus==='warn'?'atenção':'violada'), dwStatus)}</h4>
+      <div class="stat">DW = ${Stats.fmtBr(dw,3)} (faixa OK: 1,5–2,5)</div>
+      <div class="interp">Valores próximos a 2 indicam independência. Próximo a 0 = autocorrelação positiva; próximo a 4 = negativa. ${WC.cite('Field, 2018', 'Field, A. (2018). Discovering statistics using IBM SPSS Statistics (5th ed.). Sage.')}; ${WC.cite('Durbin & Watson, 1951', 'Durbin, J., & Watson, G. S. (1951). Testing for serial correlation in least squares regression II. Biometrika, 38(1/2), 159–178.')}</div>
+    </div>
+    <div class="assumption-card ${vifStatus}">
+      <h4>Multicolinearidade ${badge(vifStatus==='pass'?'confortável':(vifStatus==='warn'?'atenção':'crítica'), vifStatus)}</h4>
+      <div class="stat">VIF máximo = ${Stats.fmtBr(maxVIF,3)} · Tolerância mín. = ${Stats.fmtBr(1/maxVIF,3)}</div>
+      <div class="stat">VIFs por preditor: ${vifs.map((v,i) => `${currentVIs[i]} = ${v.toFixed(2).replace('.',',')}`).join(' · ')}</div>
+      <div class="interp">VIF &lt; 5 confortável; 5–10 atenção; ≥ 10 crítico. ${WC.cite('Hair et al., 2019', 'Hair, J. F., Black, W. C., Babin, B. J., & Anderson, R. E. (2019). Multivariate data analysis (8th ed.). Cengage.')}</div>
+    </div>
+    <div class="assumption-card ${cookStatus}">
+      <h4>Observações influentes (Cook's D) ${badge(cookStatus==='pass'?'ok':(cookStatus==='warn'?'inspecionar':'crítico'), cookStatus)}</h4>
+      <div class="stat">Pela regra 4/N (= ${cookCutoff4N.toFixed(4).replace('.',',')}): <strong>${nInfluential4N}</strong> observações</div>
+      <div class="stat">Pela regra clássica D > 1: <strong>${nInfluentialD1}</strong> observações</div>
+      <div class="interp">A regra 4/N é mais conservadora; D > 1 sinaliza casos extremos. ${WC.cite('Cook & Weisberg, 1982', 'Cook, R. D., & Weisberg, S. (1982). Residuals and influence in regression. Chapman & Hall.')}; ${WC.cite('Bollen & Jackman, 1990', 'Bollen, K. A., & Jackman, R. W. (1990). Regression diagnostics: An expository treatment of outliers and influential cases. In J. Fox & J. S. Long (Eds.), Modern methods of data analysis. Sage.')}</div>
+    </div>
+    <div class="assumption-card ${levStatus}">
+      <h4>Pontos de alavancagem (leverage) ${badge(levStatus==='pass'?'ok':'inspecionar', levStatus)}</h4>
+      <div class="stat">Cutoff: h > 2(k+1)/N = ${leverageCutoff.toFixed(4).replace('.',',')}</div>
+      <div class="stat"><strong>${nHighLeverage}</strong> observações acima do cutoff (em ${m.n}).</div>
+      <div class="interp">Leverage mede afastamento no espaço dos preditores. Cutoff de Belsley et al. (1980). ${WC.cite('Belsley et al., 1980', 'Belsley, D. A., Kuh, E., & Welsch, R. E. (1980). Regression diagnostics: Identifying influential data and sources of collinearity. Wiley.')}</div>
+    </div>
   `;
 
-  // QQ plot
+  // Réguas
+  let rulers = '';
+  rulers += WC.renderEffectRuler(Math.abs(jb.skew), 'skewness', { label: '|Assimetria| dos resíduos', ref: 'Hair et al., 2019' });
+  rulers += WC.renderEffectRuler(Math.abs(jb.kurt), 'kurtosis', { label: '|Curtose| dos resíduos (excesso)', ref: 'Hair et al., 2019' });
+  rulers += WC.renderEffectRuler(maxVIF, 'vif', { label: 'VIF máximo', ref: 'Hair et al., 2019' });
+  // Régua especial DW (centrada em 2)
+  const dwBands = [
+    {upper: 1.2, label: 'Severo (autocorr. +)' },
+    {upper: 1.5, label: 'Atenção' },
+    {upper: 2.5, label: 'OK' },
+    {upper: 2.8, label: 'Atenção' },
+    {upper: Infinity, label: 'Severo (autocorr. –)' }
+  ];
+  rulers += WC.renderEffectRuler(dw, dwBands, { label: 'Durbin-Watson (ideal = 2,0)', ref: 'Field, 2018', domainMax: 4 });
+  document.getElementById('rulers-container').innerHTML = rulers;
+
+  // Resíduos vs ajustados
+  drawResidFit(m.fitted, m.residuals);
   drawQQ(m.residuals);
-  drawResidFitted(m.residuals, m.fitted);
-  drawVIFTable(termNames, vifs);
-  drawCookPlot(cooks.D, cookCut);
+  drawCook(cook.D, cookCutoff4N);
 
-  // Veredicto
-  const passed = [sNorm, sHet, sInd, sMC, sOut].filter(s => s.cls === 'pass').length;
-  let verdict = '';
-  if(passed === 5){
-    verdict = `<div class="interp-box"><strong>Modelo aprovado em todos os 5 pressupostos.</strong> Você pode reportar os resultados com confiança. Em uma publicação, descreva os testes nos métodos e mencione os valores nos resultados (ou em material suplementar).</div>`;
-  } else {
-    const issues = [];
-    if(sNorm.cls !== 'pass') issues.push('normalidade');
-    if(sHet.cls !== 'pass')  issues.push('homocedasticidade');
-    if(sInd.cls !== 'pass')  issues.push('independência');
-    if(sMC.cls !== 'pass')   issues.push('multicolinearidade');
-    if(sOut.cls !== 'pass')  issues.push('outliers');
-    verdict = `<div class="interp-box"><strong>Atenção:</strong> os seguintes pressupostos exigem revisão — <strong>${issues.join(', ')}</strong>. Considere transformações, modelos robustos (e.g. SEs robustos de White), centralização adicional, ou inspeção/justificativa das observações influentes antes de publicar.</div>`;
+  // Cook summary
+  document.getElementById('cook-summary').innerHTML = `
+    <div class="interp-box mt-12">
+      Pela regra <strong>4/N</strong> = ${cookCutoff4N.toFixed(4).replace('.',',')}: <strong>${nInfluential4N}</strong> observações ultrapassam o cutoff
+      (${(100*nInfluential4N/m.n).toFixed(1).replace('.',',')}% dos casos).
+      Pela regra clássica <strong>D > 1</strong>: <strong>${nInfluentialD1}</strong> observação(ões).
+      ${nInfluentialD1 > 0 ? 'Inspecione individualmente os casos com D > 1 — podem distorcer fortemente as estimativas.' : 'Nenhum caso atinge a regra clássica de Cook & Weisberg.'}
+    </div>
+  `;
+
+  // APA
+  document.getElementById('apa-container').innerHTML = WC.renderAPABox(
+    WC.apaPressupostos(jb, bp, dw, maxVIF, nInfluential4N, m.n),
+    { note: 'Esta síntese cobre os cinco pressupostos clássicos. Para diagnósticos visuais, inclua também o gráfico de resíduos vs. ajustados e o Q-Q plot.' }
+  );
+}
+
+function drawResidFit(fitted, resid){
+  const xMin = Math.min(...fitted), xMax = Math.max(...fitted);
+  const yMin = Math.min(...resid), yMax = Math.max(...resid);
+  const xPad = (xMax-xMin)*0.05, yPad = (yMax-yMin)*0.08;
+  const xLo = xMin-xPad, xHi = xMax+xPad, yLo = yMin-yPad, yHi = yMax+yPad;
+  const w = 440, h = 280, pad = {top: 16, right: 18, bottom: 44, left: 50};
+  const innerW = w-pad.left-pad.right, innerH = h-pad.top-pad.bottom;
+  const sx = v => pad.left + (v-xLo)/(xHi-xLo) * innerW;
+  const sy = v => pad.top + (1-(v-yLo)/(yHi-yLo)) * innerH;
+  let svg = `<svg class="chart" viewBox="0 0 ${w} ${h}">`;
+  for(let k=0;k<=4;k++){
+    const xv = xLo+(xHi-xLo)*k/4, yv = yLo+(yHi-yLo)*k/4;
+    svg += `<line class="grid-line" x1="${sx(xv)}" y1="${pad.top}" x2="${sx(xv)}" y2="${h-pad.bottom}"/>`;
+    svg += `<line class="grid-line" x1="${pad.left}" y1="${sy(yv)}" x2="${w-pad.right}" y2="${sy(yv)}"/>`;
+    svg += `<text class="axis-text" x="${sx(xv)}" y="${h-pad.bottom+14}" text-anchor="middle">${xv.toFixed(1)}</text>`;
+    svg += `<text class="axis-text" x="${pad.left-6}" y="${sy(yv)+4}" text-anchor="end">${yv.toFixed(1)}</text>`;
   }
-  document.getElementById('verdict-content').innerHTML = verdict;
+  svg += `<line class="axis-line" x1="${pad.left}" y1="${h-pad.bottom}" x2="${w-pad.right}" y2="${h-pad.bottom}"/>`;
+  svg += `<line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${h-pad.bottom}"/>`;
+  svg += `<line x1="${pad.left}" y1="${sy(0)}" x2="${w-pad.right}" y2="${sy(0)}" stroke="#b08d57" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+  svg += `<text class="axis-title" x="${pad.left+innerW/2}" y="${h-8}" text-anchor="middle">Valor ajustado</text>`;
+  svg += `<text class="axis-title" x="${-pad.top-innerH/2}" y="14" text-anchor="middle" transform="rotate(-90)">Resíduo</text>`;
+  for(let i=0;i<fitted.length;i++) svg += `<circle class="point" cx="${sx(fitted[i])}" cy="${sy(resid[i])}" r="3"/>`;
+  svg += `</svg>`;
+  document.getElementById('resid-fit').innerHTML = svg;
 }
 
-function assumptionCard(title, s, stat, interp){
-  return `<div class="assumption-card ${s.cls}">
-    <h4>${s.icon} ${title} <span class="badge ${s.cls==='pass'?'ok':s.cls==='warn'?'warn':'bad'}" style="margin-left: 6px;">${s.txt}</span></h4>
-    <div class="stat">${stat}</div>
-    <div class="interp">${interp}</div>
-  </div>`;
-}
-
-function drawQQ(residuals){
-  const sorted = residuals.slice().sort((a,b) => a-b);
+function drawQQ(resid){
+  const sorted = resid.slice().sort((a,b) => a-b);
   const n = sorted.length;
-  const sd = Stats.std(sorted);
-  const m = Stats.mean(sorted);
-  const points = sorted.map((r,i) => {
-    const p = (i+0.5)/n;
-    const theor = Stats.normalInv(p) * sd + m;
-    return [theor, r];
-  });
-  const allX = points.map(p => p[0]), allY = points.map(p => p[1]);
-  const mn = Math.min(...allX, ...allY), mx = Math.max(...allX, ...allY);
-  const pad = (mx-mn)*0.05, lo = mn-pad, hi = mx+pad;
-
-  const w = 460, h = 340, p_ = {top: 16, right: 18, bottom: 50, left: 56};
-  const iW = w - p_.left - p_.right, iH = h - p_.top - p_.bottom;
-  const sx = v => p_.left + (v - lo)/(hi - lo) * iW;
-  const sy = v => p_.top + (1 - (v - lo)/(hi - lo)) * iH;
+  const theoretical = sorted.map((_, i) => Stats.normalInv((i+0.5)/n));
+  const sd = Stats.std(resid);
+  const xMin = Math.min(...theoretical), xMax = Math.max(...theoretical);
+  const yMin = Math.min(...sorted), yMax = Math.max(...sorted);
+  const w = 440, h = 280, pad = {top: 16, right: 18, bottom: 44, left: 50};
+  const innerW = w-pad.left-pad.right, innerH = h-pad.top-pad.bottom;
+  const xPad = (xMax-xMin)*0.05, yPad = (yMax-yMin)*0.05;
+  const xLo = xMin-xPad, xHi = xMax+xPad, yLo = yMin-yPad, yHi = yMax+yPad;
+  const sx = v => pad.left + (v-xLo)/(xHi-xLo) * innerW;
+  const sy = v => pad.top + (1-(v-yLo)/(yHi-yLo)) * innerH;
   let svg = `<svg class="chart" viewBox="0 0 ${w} ${h}">`;
-  for(let k=0;k<=5;k++){
-    const v = lo + (hi-lo)*k/5;
-    svg += `<line class="grid-line" x1="${sx(v)}" y1="${p_.top}" x2="${sx(v)}" y2="${h-p_.bottom}"/>`;
-    svg += `<line class="grid-line" x1="${p_.left}" y1="${sy(v)}" x2="${w-p_.right}" y2="${sy(v)}"/>`;
-    svg += `<text class="axis-text" x="${sx(v)}" y="${h-p_.bottom+16}" text-anchor="middle">${v.toFixed(1)}</text>`;
-    svg += `<text class="axis-text" x="${p_.left-6}" y="${sy(v)+4}" text-anchor="end">${v.toFixed(1)}</text>`;
+  for(let k=0;k<=4;k++){
+    const xv = xLo+(xHi-xLo)*k/4, yv = yLo+(yHi-yLo)*k/4;
+    svg += `<line class="grid-line" x1="${sx(xv)}" y1="${pad.top}" x2="${sx(xv)}" y2="${h-pad.bottom}"/>`;
+    svg += `<line class="grid-line" x1="${pad.left}" y1="${sy(yv)}" x2="${w-pad.right}" y2="${sy(yv)}"/>`;
+    svg += `<text class="axis-text" x="${sx(xv)}" y="${h-pad.bottom+14}" text-anchor="middle">${xv.toFixed(1)}</text>`;
+    svg += `<text class="axis-text" x="${pad.left-6}" y="${sy(yv)+4}" text-anchor="end">${yv.toFixed(1)}</text>`;
   }
-  svg += `<line class="axis-line" x1="${p_.left}" y1="${h-p_.bottom}" x2="${w-p_.right}" y2="${h-p_.bottom}"/>`;
-  svg += `<line class="axis-line" x1="${p_.left}" y1="${p_.top}" x2="${p_.left}" y2="${h-p_.bottom}"/>`;
-  svg += `<text class="axis-title" x="${p_.left+iW/2}" y="${h-10}" text-anchor="middle">Quantis teóricos (Normal)</text>`;
-  svg += `<text class="axis-title" x="${-p_.top-iH/2}" y="14" text-anchor="middle" transform="rotate(-90)">Resíduos amostrais</text>`;
-  // diagonal
-  svg += `<line x1="${sx(lo)}" y1="${sy(lo)}" x2="${sx(hi)}" y2="${sy(hi)}" stroke="#b08d57" stroke-width="1.5" stroke-dasharray="4,3"/>`;
-  for(const [a,b] of points){
-    svg += `<circle class="point" cx="${sx(a)}" cy="${sy(b)}" r="3"/>`;
-  }
+  svg += `<line class="axis-line" x1="${pad.left}" y1="${h-pad.bottom}" x2="${w-pad.right}" y2="${h-pad.bottom}"/>`;
+  svg += `<line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${h-pad.bottom}"/>`;
+  // linha diagonal teórica (z * sd)
+  svg += `<line x1="${sx(xLo)}" y1="${sy(xLo*sd)}" x2="${sx(xHi)}" y2="${sy(xHi*sd)}" stroke="#b08d57" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+  svg += `<text class="axis-title" x="${pad.left+innerW/2}" y="${h-8}" text-anchor="middle">Quantil teórico (normal)</text>`;
+  svg += `<text class="axis-title" x="${-pad.top-innerH/2}" y="14" text-anchor="middle" transform="rotate(-90)">Quantil observado</text>`;
+  for(let i=0;i<n;i++) svg += `<circle class="point" cx="${sx(theoretical[i])}" cy="${sy(sorted[i])}" r="3"/>`;
   svg += `</svg>`;
-  document.getElementById('qq-container').innerHTML = svg;
+  document.getElementById('qq-plot').innerHTML = svg;
 }
 
-function drawResidFitted(resid, fitted){
-  const xmin = Math.min(...fitted), xmax = Math.max(...fitted);
-  const ymin = Math.min(...resid), ymax = Math.max(...resid);
-  const xp = (xmax-xmin)*0.05, yp = (ymax-ymin)*0.1;
-  const xLo = xmin-xp, xHi = xmax+xp;
-  const yLo = Math.min(ymin-yp, -Math.max(Math.abs(ymin), Math.abs(ymax))*1.05);
-  const yHi = Math.max(ymax+yp, Math.max(Math.abs(ymin), Math.abs(ymax))*1.05);
-  const w = 460, h = 340, p_ = {top: 16, right: 18, bottom: 50, left: 56};
-  const iW = w - p_.left - p_.right, iH = h - p_.top - p_.bottom;
-  const sx = v => p_.left + (v - xLo)/(xHi - xLo) * iW;
-  const sy = v => p_.top + (1 - (v - yLo)/(yHi - yLo)) * iH;
-  let svg = `<svg class="chart" viewBox="0 0 ${w} ${h}">`;
-  for(let k=0;k<=5;k++){
-    const xv = xLo + (xHi-xLo)*k/5, yv = yLo + (yHi-yLo)*k/5;
-    svg += `<line class="grid-line" x1="${sx(xv)}" y1="${p_.top}" x2="${sx(xv)}" y2="${h-p_.bottom}"/>`;
-    svg += `<line class="grid-line" x1="${p_.left}" y1="${sy(yv)}" x2="${w-p_.right}" y2="${sy(yv)}"/>`;
-    svg += `<text class="axis-text" x="${sx(xv)}" y="${h-p_.bottom+16}" text-anchor="middle">${xv.toFixed(1)}</text>`;
-    svg += `<text class="axis-text" x="${p_.left-6}" y="${sy(yv)+4}" text-anchor="end">${yv.toFixed(2)}</text>`;
-  }
-  svg += `<line class="axis-line" x1="${p_.left}" y1="${h-p_.bottom}" x2="${w-p_.right}" y2="${h-p_.bottom}"/>`;
-  svg += `<line class="axis-line" x1="${p_.left}" y1="${p_.top}" x2="${p_.left}" y2="${h-p_.bottom}"/>`;
-  svg += `<line x1="${p_.left}" y1="${sy(0)}" x2="${w-p_.right}" y2="${sy(0)}" stroke="#b08d57" stroke-width="1.5" stroke-dasharray="4,3"/>`;
-  svg += `<text class="axis-title" x="${p_.left+iW/2}" y="${h-10}" text-anchor="middle">Valores ajustados (ŷ)</text>`;
-  svg += `<text class="axis-title" x="${-p_.top-iH/2}" y="14" text-anchor="middle" transform="rotate(-90)">Resíduos</text>`;
-  for(let i=0;i<resid.length;i++){
-    svg += `<circle class="point" cx="${sx(fitted[i])}" cy="${sy(resid[i])}" r="3"/>`;
-  }
-  svg += `</svg>`;
-  document.getElementById('resid-fitted').innerHTML = svg;
-}
-
-function drawVIFTable(names, vifs){
-  let tb = `<table class="coef-table"><thead><tr><th>Termo</th><th>VIF</th><th>Status</th></tr></thead><tbody>`;
-  for(let i=0;i<names.length;i++){
-    const v = vifs[i];
-    const cls = v < 5 ? 'ok' : v < 10 ? 'warn' : 'bad';
-    const lbl = v < 5 ? 'ok' : v < 10 ? 'elevado' : 'crítico';
-    tb += `<tr><td>${names[i]}</td><td>${Stats.fmt(v,3).replace('.',',')}</td><td><span class="badge ${cls}">${lbl}</span></td></tr>`;
-  }
-  tb += '</tbody></table>';
-  document.getElementById('vif-table').innerHTML = tb;
-}
-
-function drawCookPlot(D, cut){
+function drawCook(D, cutoff){
   const n = D.length;
-  const ymax = Math.max(cut*1.2, ...D)*1.05;
-  const w = 460, h = 340, p_ = {top: 16, right: 18, bottom: 50, left: 56};
-  const iW = w - p_.left - p_.right, iH = h - p_.top - p_.bottom;
-  const sx = v => p_.left + (v / (n-1)) * iW;
-  const sy = v => p_.top + (1 - v / ymax) * iH;
+  const xMin = 1, xMax = n;
+  const yMin = 0, yMax = Math.max(...D, cutoff*1.4, 1.05);
+  const w = 900, h = 250, pad = {top: 16, right: 16, bottom: 44, left: 60};
+  const innerW = w-pad.left-pad.right, innerH = h-pad.top-pad.bottom;
+  const sx = v => pad.left + (v-xMin)/(xMax-xMin) * innerW;
+  const sy = v => pad.top + (1-(v-yMin)/(yMax-yMin)) * innerH;
   let svg = `<svg class="chart" viewBox="0 0 ${w} ${h}">`;
-  for(let k=0;k<=5;k++){
-    const xv = Math.round((n-1)*k/5);
-    const yv = ymax*k/5;
-    svg += `<line class="grid-line" x1="${sx(xv)}" y1="${p_.top}" x2="${sx(xv)}" y2="${h-p_.bottom}"/>`;
-    svg += `<line class="grid-line" x1="${p_.left}" y1="${sy(yv)}" x2="${w-p_.right}" y2="${sy(yv)}"/>`;
-    svg += `<text class="axis-text" x="${sx(xv)}" y="${h-p_.bottom+16}" text-anchor="middle">${xv}</text>`;
-    svg += `<text class="axis-text" x="${p_.left-6}" y="${sy(yv)+4}" text-anchor="end">${yv.toFixed(3)}</text>`;
+  for(let k=0;k<=4;k++){
+    const yv = yMin+(yMax-yMin)*k/4;
+    svg += `<line class="grid-line" x1="${pad.left}" y1="${sy(yv)}" x2="${w-pad.right}" y2="${sy(yv)}"/>`;
+    svg += `<text class="axis-text" x="${pad.left-6}" y="${sy(yv)+4}" text-anchor="end">${yv.toFixed(3)}</text>`;
   }
-  svg += `<line class="axis-line" x1="${p_.left}" y1="${h-p_.bottom}" x2="${w-p_.right}" y2="${h-p_.bottom}"/>`;
-  svg += `<line class="axis-line" x1="${p_.left}" y1="${p_.top}" x2="${p_.left}" y2="${h-p_.bottom}"/>`;
-  svg += `<line x1="${p_.left}" y1="${sy(cut)}" x2="${w-p_.right}" y2="${sy(cut)}" stroke="#a04444" stroke-width="1.5" stroke-dasharray="4,3"/>`;
-  svg += `<text class="axis-text" x="${w-p_.right-4}" y="${sy(cut)-5}" text-anchor="end" fill="#a04444">corte = 4/N = ${cut.toFixed(4)}</text>`;
-  svg += `<text class="axis-title" x="${p_.left+iW/2}" y="${h-10}" text-anchor="middle">Índice da observação</text>`;
-  svg += `<text class="axis-title" x="${-p_.top-iH/2}" y="14" text-anchor="middle" transform="rotate(-90)">Cook's D</text>`;
+  svg += `<line class="axis-line" x1="${pad.left}" y1="${h-pad.bottom}" x2="${w-pad.right}" y2="${h-pad.bottom}"/>`;
+  svg += `<line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${h-pad.bottom}"/>`;
+  // Cutoffs
+  svg += `<line x1="${pad.left}" y1="${sy(cutoff)}" x2="${w-pad.right}" y2="${sy(cutoff)}" stroke="#c08a3a" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+  svg += `<text x="${w-pad.right-4}" y="${sy(cutoff)-4}" text-anchor="end" font-size="11" fill="#c08a3a" font-family="JetBrains Mono">4/N = ${cutoff.toFixed(4)}</text>`;
+  if(yMax >= 1){
+    svg += `<line x1="${pad.left}" y1="${sy(1)}" x2="${w-pad.right}" y2="${sy(1)}" stroke="#a04444" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    svg += `<text x="${w-pad.right-4}" y="${sy(1)-4}" text-anchor="end" font-size="11" fill="#a04444" font-family="JetBrains Mono">D = 1 (Cook & Weisberg, 1982)</text>`;
+  }
+  svg += `<text class="axis-title" x="${pad.left+innerW/2}" y="${h-8}" text-anchor="middle">Observação (i)</text>`;
+  svg += `<text class="axis-title" x="${-pad.top-innerH/2}" y="14" text-anchor="middle" transform="rotate(-90)">Cook's D</text>`;
   for(let i=0;i<n;i++){
-    const cls = D[i] > cut ? 'fill="#a04444" fill-opacity="0.7"' : 'class="point"';
-    svg += `<line x1="${sx(i)}" y1="${sy(0)}" x2="${sx(i)}" y2="${sy(D[i])}" stroke="${D[i] > cut ? '#a04444' : '#2c5f8d'}" stroke-opacity="${D[i] > cut ? '0.7' : '0.4'}" stroke-width="1"/>`;
-    svg += `<circle cx="${sx(i)}" cy="${sy(D[i])}" r="2.5" ${cls}/>`;
+    const color = D[i] > 1 ? '#a04444' : (D[i] > cutoff ? '#c08a3a' : '#2c5f8d');
+    svg += `<line x1="${sx(i+1)}" y1="${sy(0)}" x2="${sx(i+1)}" y2="${sy(D[i])}" stroke="${color}" stroke-width="1.3"/>`;
   }
   svg += `</svg>`;
-  document.getElementById('cook-container').innerHTML = svg;
+  document.getElementById('cook-plot').innerHTML = svg;
 }
-
-document.getElementById('y-select').addEventListener('change', () => { populateUI(); compute(); });
-document.getElementById('int-x').addEventListener('change', compute);
-document.getElementById('int-w').addEventListener('change', compute);
 
 document.getElementById('csv-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(!file) return;
+  const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const parsed = Stats.parseCSV(ev.target.result);
-      const numericVars = parsed.headers.filter(h =>
-        parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h]))
-      );
+      const numericVars = parsed.headers.filter(h => parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h])));
       if(numericVars.length < 2){ alert('Precisa de pelo menos 2 colunas numéricas.'); return; }
-      DATA = parsed.rows;
-      ALL_VARS = numericVars;
+      DATA = parsed.rows; ALL_VARS = numericVars;
+      currentVD = numericVars[numericVars.length-1];
+      currentVIs = numericVars.filter(v => v !== currentVD);
       document.getElementById('data-source').textContent = `CSV "${file.name}" (N = ${DATA.length})`;
-      populateUI();
-      compute();
+      populateLists(); compute();
     } catch(err){ alert('Erro: ' + err.message); }
   };
   reader.readAsText(file);
 });
 
-populateUI();
+// Quiz
+document.getElementById('quiz-container').innerHTML = WC.renderQuiz([
+  {
+    q: 'O teste de Breusch-Pagan do seu modelo retornou p = 0,03. O que isso significa?',
+    options: [
+      { label: 'Homocedasticidade atendida (p < 0,05 é bom)', correct: false, explain: 'Atenção: aqui H₀ é "a variância é constante". Rejeitar H₀ (p < 0,05) significa que a variância <em>não</em> é constante — há heterocedasticidade.' },
+      { label: 'Homocedasticidade violada — há heterocedasticidade', correct: true, explain: 'Exato. p < 0,05 rejeita a hipótese nula de variância constante. Considere transformações de Y (log, raiz), erros-padrão robustos (HC3) ou regressão ponderada.' },
+      { label: 'O modelo precisa ser re-estimado com mais variáveis', correct: false, explain: 'Não diretamente — a heterocedasticidade é um problema de variância dos resíduos, não de especificação por preditores faltantes (embora isso possa ser parte da causa).' }
+    ]
+  },
+  {
+    q: 'Você obteve Durbin-Watson = 1,82 em uma regressão. Pelas referências canônicas (Field, 2018), você diria que a independência dos resíduos é:',
+    options: [
+      { label: 'Violada — DW deveria ser exatamente 2', correct: false, explain: 'DW = 2 é o valor ideal, não uma exigência. A faixa prática 1,5–2,5 é considerada aceitável.' },
+      { label: 'Atendida — está bem dentro da faixa 1,5–2,5', correct: true, explain: 'Correto. Field (2018) sugere considerar atendida a independência quando DW fica entre 1,5 e 2,5 (alguns autores são mais liberais, aceitando 1,0–3,0).' },
+      { label: 'Inconclusiva — depende da tabela dL/dU', correct: false, explain: 'Embora a tabela dL/dU dê um teste formal, na prática a regra heurística 1,5–2,5 é amplamente aceita em ciências sociais.' }
+    ]
+  },
+  {
+    q: 'Seu modelo tem N = 200 e Cook\'s D máximo de 0,12. Pela regra <em>4/N</em>, essa observação é influente? E pela regra <em>D > 1</em>?',
+    options: [
+      { label: 'Sim por 4/N, sim por D > 1', correct: false, explain: 'Pela regra D > 1, claramente não (0,12 < 1). Verifique a regra 4/N: 4/200 = 0,02, e 0,12 > 0,02.' },
+      { label: 'Sim por 4/N, não por D > 1', correct: true, explain: 'Exato. 4/200 = 0,02, e 0,12 está acima desse cutoff. Mas pela regra clássica de Cook & Weisberg (1982), só seria preocupante se D > 1. A diferença reflete a natureza mais conservadora da regra 4/N — ela sinaliza casos para inspeção, não necessariamente para exclusão.' },
+      { label: 'Não por 4/N, não por D > 1', correct: false, explain: 'Verifique: 4/200 = 0,02, e o D = 0,12 está acima desse valor. Portanto sinaliza pela regra 4/N.' }
+    ]
+  }
+], { subtitle: 'Três pegadinhas frequentes em diagnósticos.' });
+
+populateLists();
 compute();
 </script>
+<!-- Cloudflare Web Analytics — INSTRUÇÕES no guia de uso (PDF/DOCX).
+     1) Crie conta gratuita em dash.cloudflare.com
+     2) Web Analytics → Add a site → cadastre [seu-usuario].github.io
+     3) Cole o token aqui no lugar de COLE_SEU_TOKEN_AQUI e descomente a linha abaixo. -->
+<!-- <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;COLE_SEU_TOKEN_AQUI&quot;}"></script> -->
 </body>
 </html>

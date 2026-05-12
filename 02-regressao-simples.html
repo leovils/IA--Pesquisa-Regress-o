@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/dados.js"></script>
 <script src="assets/stats.js"></script>
+<script src="assets/widgets-common.js"></script>
 </head>
 <body>
 <div class="container">
@@ -15,12 +16,12 @@
     <a href="index.html" class="home-link">← Jornada</a>
     <div class="breadcrumb">Estágio II · de V</div>
     <h1>Regressão Linear Simples</h1>
-    <div class="subtitle">Uma variável independente, uma dependente, uma reta. Escolha o par e observe como nascem o intercepto, a inclinação, o erro-padrão, o teste <em>t</em> de cada parâmetro, o R², a estatística <em>F</em> do modelo e a banda de confiança da reta.</div>
+    <div class="subtitle">Uma VI, uma VD, uma reta. A régua de tamanho de efeito mostra a magnitude do R² segundo <span class="ref-cite" title="Cohen, J. (1988). Statistical power analysis for the behavioral sciences (2nd ed.). Erlbaum.">Cohen (1988)</span>. Ao final, há uma frase pronta no formato APA.</div>
   </header>
 
   <div class="panel">
     <h3 class="panel-title">Dados</h3>
-    <div class="grid-2" style="grid-template-columns: 1fr 1fr;">
+    <div class="grid-equal-2">
       <div>
         <label class="control-label">Fonte ativa</label>
         <div id="data-source" class="mono" style="font-size: 13px; color: var(--ink-soft);">Banco pré-carregado (N = 180)</div>
@@ -28,13 +29,11 @@
       <div class="upload-zone">
         <label>Subir CSV próprio</label>
         <input type="file" id="csv-input" accept=".csv,.txt">
-        <div class="muted mt-12" style="font-size: 11.5px;">Separador: vírgula, ponto-e-vírgula ou tab. Primeira linha = cabeçalho.</div>
       </div>
     </div>
   </div>
 
   <div class="grid-2">
-
     <div>
       <div class="panel">
         <h3 class="panel-title">Variáveis</h3>
@@ -52,12 +51,13 @@
         <h3 class="panel-title">Equação estimada</h3>
         <div id="equation" class="mono" style="font-size: 15px; color: var(--ink); padding: 10px 0;"></div>
         <div id="kpis"></div>
+        <div id="ruler-container"></div>
       </div>
     </div>
 
     <div class="panel">
       <h3 class="panel-title">Dispersão + Reta de Regressão</h3>
-      <div class="panel-subtitle">A faixa clara mostra o intervalo de confiança 95% da reta.</div>
+      <div class="panel-subtitle">A faixa clara mostra o IC 95% da reta.</div>
       <div id="scatter-container"></div>
     </div>
   </div>
@@ -66,16 +66,19 @@
     <h3 class="panel-title">Coeficientes</h3>
     <table class="coef-table">
       <thead>
-        <tr><th>Termo</th><th>β</th><th>EP</th><th>t</th><th>p</th><th>IC 95% (inf)</th><th>IC 95% (sup)</th></tr>
+        <tr><th>Termo</th><th>β</th><th>EP</th><th>t</th><th>p</th><th>IC 95% inf</th><th>IC 95% sup</th></tr>
       </thead>
       <tbody id="coef-tbody"></tbody>
     </table>
     <div id="interp-box"></div>
+    <div id="apa-container"></div>
   </div>
+
+  <div id="quiz-container"></div>
 
   <footer class="widget-footer">
     <div class="glyph">✦ ✦</div>
-    <div>Estágio II de V</div>
+    <div>Estágio II de V · <a href="referencias.html">Referências</a></div>
   </footer>
 
 </div>
@@ -83,16 +86,8 @@
 <script>
 let DATA = window.BANCO_180;
 let ALL_VARS = ['VI1','VI2','VI3','W1','VD1','VD2'];
-let VIS_DEFAULT = ['VI1','VI2','VI3','W1'];
-let VDS_DEFAULT = ['VD1','VD2'];
-
-function detectNumericVars(data){
-  const cols = Object.keys(data[0]);
-  return cols.filter(c => {
-    if(c.toLowerCase() === 'id') return false;
-    return data.every(r => typeof r[c] === 'number' && !isNaN(r[c]));
-  });
-}
+const VIS_DEFAULT = ['VI1','VI2','VI3','W1'];
+const VDS_DEFAULT = ['VD1','VD2'];
 
 function populateSelects(){
   const visSel = document.getElementById('vi-select');
@@ -102,82 +97,84 @@ function populateSelects(){
   const vds = (DATA === window.BANCO_180) ? VDS_DEFAULT : ALL_VARS;
   vis.forEach(v => visSel.innerHTML += `<option value="${v}">${v}</option>`);
   vds.forEach(v => vdsSel.innerHTML += `<option value="${v}">${v}</option>`);
-  // padrão
   if(DATA === window.BANCO_180){ visSel.value = 'VI1'; vdsSel.value = 'VD1'; }
 }
 
 function compute(){
   const xVar = document.getElementById('vi-select').value;
   const yVar = document.getElementById('vd-select').value;
-  if(!xVar || !yVar || xVar === yVar){ return; }
+  if(!xVar || !yVar || xVar === yVar) return;
   const x = DATA.map(r => r[xVar]);
   const y = DATA.map(r => r[yVar]);
   const X = x.map(v => [v]);
   const m = Stats.ols(X, y);
   if(m.error){ document.getElementById('equation').textContent = 'Erro: ' + m.error; return; }
 
-  // Equação
   const b0 = m.beta[0], b1 = m.beta[1];
   const sign = b1 >= 0 ? '+' : '–';
   document.getElementById('equation').innerHTML =
     `<span style="color: var(--gold)">${yVar}</span> = ${b0.toFixed(3).replace('.',',')} ${sign} ${Math.abs(b1).toFixed(3).replace('.',',')} · <span style="color: var(--gold)">${xVar}</span> + ε`;
 
-  // KPIs
-  const kpiHtml = `
+  const f2 = Stats.cohenF2(m.r2);
+  document.getElementById('kpis').innerHTML = `
     <div class="kpi-grid">
       <div class="kpi highlight">
         <div class="kpi-label">R²</div>
-        <div class="kpi-value">${Stats.fmt(m.r2, 3).replace('.',',')}</div>
-        <div class="kpi-sub">R² ajust. = ${Stats.fmt(m.r2adj, 3).replace('.',',')}</div>
+        <div class="kpi-value">${Stats.fmtBr(m.r2, 3)}</div>
+        <div class="kpi-sub">${Stats.classify(m.r2, 'r2')}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">R² ajust.</div>
+        <div class="kpi-value">${Stats.fmtBr(m.r2adj, 3)}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">f² (Cohen)</div>
+        <div class="kpi-value">${Stats.fmtBr(f2, 3)}</div>
+        <div class="kpi-sub">${Stats.classify(f2, 'f2')}</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">F</div>
-        <div class="kpi-value">${Stats.fmt(m.f, 2).replace('.',',')}</div>
-        <div class="kpi-sub">gl = ${m.df_mod}, ${m.df_res}</div>
+        <div class="kpi-value">${Stats.fmtBr(m.f, 2)}</div>
+        <div class="kpi-sub">p = ${Stats.fmtP(m.fp)}</div>
       </div>
-      <div class="kpi">
-        <div class="kpi-label">p modelo</div>
-        <div class="kpi-value">${Stats.fmtP(m.fp)}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">N</div>
-        <div class="kpi-value">${m.n}</div>
-      </div>
-    </div>`;
-  document.getElementById('kpis').innerHTML = kpiHtml;
+    </div>
+  `;
 
-  // Tabela
+  // Régua dupla: R² e f²
+  document.getElementById('ruler-container').innerHTML =
+    WC.renderEffectRuler(m.r2, 'r2', {label: 'R² do modelo', ref: 'Cohen, 1988'}) +
+    WC.renderEffectRuler(f2, 'f2', {label: 'f² de Cohen', ref: 'Cohen, 1988'});
+
   const names = ['Intercepto (β₀)', `${xVar} (β₁)`];
   let tb = '';
   for(let i=0;i<2;i++){
     tb += `<tr><td>${names[i]}</td>
-      <td>${Stats.fmt(m.beta[i],4).replace('.',',')}</td>
-      <td>${Stats.fmt(m.se[i],4).replace('.',',')}</td>
-      <td>${Stats.fmt(m.t[i],3).replace('.',',')}</td>
+      <td>${Stats.fmtBr(m.beta[i],4)}</td>
+      <td>${Stats.fmtBr(m.se[i],4)}</td>
+      <td>${Stats.fmtBr(m.t[i],3)}</td>
       <td>${Stats.fmtP(m.p[i])} <span class="sig-stars">${Stats.stars(m.p[i])}</span></td>
-      <td>${Stats.fmt(m.ciLow[i],3).replace('.',',')}</td>
-      <td>${Stats.fmt(m.ciHigh[i],3).replace('.',',')}</td>
+      <td>${Stats.fmtBr(m.ciLow[i],3)}</td>
+      <td>${Stats.fmtBr(m.ciHigh[i],3)}</td>
     </tr>`;
   }
   document.getElementById('coef-tbody').innerHTML = tb;
 
-  // Interpretação
-  let interp = '';
+  let interp;
   const sig = m.p[1] < 0.05;
   const dir = b1 >= 0 ? 'aumenta' : 'diminui';
   if(sig){
     interp = `A cada unidade adicional em <strong>${xVar}</strong>, espera-se que <strong>${yVar}</strong> ${dir} em
               <strong>${Math.abs(b1).toFixed(3).replace('.',',')}</strong> unidades, em média
               (p ${Stats.fmtP(m.p[1]).replace('< ','&lt; ')}).
-              O modelo explica <strong>${(m.r2*100).toFixed(1).replace('.',',')}%</strong> da variância de ${yVar}.`;
+              O modelo explica <strong>${(m.r2*100).toFixed(1).replace('.',',')}%</strong> da variância de ${yVar} — um efeito <strong>${Stats.classify(m.r2,'r2').toLowerCase()}</strong> pelos critérios de Cohen (1988).`;
   } else {
-    interp = `A relação entre <strong>${xVar}</strong> e <strong>${yVar}</strong> não atingiu significância estatística
-              ao nível de 5% (β₁ = ${b1.toFixed(3).replace('.',',')}, p = ${Stats.fmtP(m.p[1])}).
-              Cuidado ao interpretar.`;
+    interp = `A relação entre <strong>${xVar}</strong> e <strong>${yVar}</strong> não atingiu significância estatística (β₁ = ${b1.toFixed(3).replace('.',',')}, p = ${Stats.fmtP(m.p[1])}). Cuidado ao interpretar.`;
   }
   document.getElementById('interp-box').innerHTML = `<div class="interp-box">${interp}</div>`;
 
-  // Scatter com banda de confiança
+  // APA
+  document.getElementById('apa-container').innerHTML = WC.renderAPABox(WC.apaRegSimples(yVar, xVar, m));
+
   drawScatter(x, y, m, xVar, yVar);
 }
 
@@ -186,19 +183,15 @@ function drawScatter(x, y, m, xVar, yVar){
   const xmin = Math.min(...x), xmax = Math.max(...x);
   const ymin = Math.min(...y), ymax = Math.max(...y);
   const xpad = (xmax-xmin)*0.05, ypad = (ymax-ymin)*0.08;
-  const xLo = xmin - xpad, xHi = xmax + xpad;
-  const yLo = ymin - ypad, yHi = ymax + ypad;
-
+  const xLo = xmin-xpad, xHi = xmax+xpad, yLo = ymin-ypad, yHi = ymax+ypad;
   const w = 520, h = 380, pad = {top: 16, right: 18, bottom: 50, left: 56};
-  const innerW = w - pad.left - pad.right;
-  const innerH = h - pad.top - pad.bottom;
-  const sx = v => pad.left + (v - xLo)/(xHi - xLo) * innerW;
-  const sy = v => pad.top + (1 - (v - yLo)/(yHi - yLo)) * innerH;
+  const innerW = w-pad.left-pad.right, innerH = h-pad.top-pad.bottom;
+  const sx = v => pad.left + (v-xLo)/(xHi-xLo) * innerW;
+  const sy = v => pad.top + (1-(v-yLo)/(yHi-yLo)) * innerH;
 
   let svg = `<svg class="chart" viewBox="0 0 ${w} ${h}">`;
-  // grid
   for(let k=0;k<=5;k++){
-    const xv = xLo + (xHi-xLo)*k/5, yv = yLo + (yHi-yLo)*k/5;
+    const xv = xLo+(xHi-xLo)*k/5, yv = yLo+(yHi-yLo)*k/5;
     svg += `<line class="grid-line" x1="${sx(xv)}" y1="${pad.top}" x2="${sx(xv)}" y2="${h-pad.bottom}"/>`;
     svg += `<line class="grid-line" x1="${pad.left}" y1="${sy(yv)}" x2="${w-pad.right}" y2="${sy(yv)}"/>`;
     svg += `<text class="axis-text" x="${sx(xv)}" y="${h-pad.bottom+16}" text-anchor="middle">${xv.toFixed(1)}</text>`;
@@ -209,31 +202,23 @@ function drawScatter(x, y, m, xVar, yVar){
   svg += `<text class="axis-title" x="${pad.left+innerW/2}" y="${h-10}" text-anchor="middle">${xVar}</text>`;
   svg += `<text class="axis-title" x="${-pad.top-innerH/2}" y="14" text-anchor="middle" transform="rotate(-90)">${yVar}</text>`;
 
-  // Banda de confiança 95% para a reta
   const tcrit = Stats.tInv(0.975, m.df_res);
   const mx = Stats.mean(x);
   const sxx = Stats.sum(x.map(v => (v-mx)*(v-mx)));
-  const sigma2 = m.sigma2;
   const npts = 60;
   const upperPts = [], lowerPts = [];
   for(let k=0;k<=npts;k++){
-    const xv = xLo + (xHi-xLo)*k/npts;
+    const xv = xLo+(xHi-xLo)*k/npts;
     const yh = m.beta[0] + m.beta[1]*xv;
-    const seMean = Math.sqrt(sigma2 * (1/n + (xv-mx)*(xv-mx)/sxx));
-    upperPts.push([xv, yh + tcrit*seMean]);
-    lowerPts.push([xv, yh - tcrit*seMean]);
+    const seMean = Math.sqrt(m.sigma2 * (1/n + (xv-mx)*(xv-mx)/sxx));
+    upperPts.push([xv, yh+tcrit*seMean]); lowerPts.push([xv, yh-tcrit*seMean]);
   }
   const pathTop = upperPts.map((p,i) => `${i===0?'M':'L'}${sx(p[0])},${sy(p[1])}`).join(' ');
   const pathBot = lowerPts.slice().reverse().map(p => `L${sx(p[0])},${sy(p[1])}`).join(' ');
   svg += `<path class="ci-band" d="${pathTop} ${pathBot} Z"/>`;
-
-  // Pontos
   for(let i=0;i<n;i++) svg += `<circle class="point" cx="${sx(x[i])}" cy="${sy(y[i])}" r="3.5"/>`;
-
-  // Reta
-  const yA = m.beta[0] + m.beta[1]*xLo, yB = m.beta[0] + m.beta[1]*xHi;
+  const yA = m.beta[0]+m.beta[1]*xLo, yB = m.beta[0]+m.beta[1]*xHi;
   svg += `<line class="reg-line" x1="${sx(xLo)}" y1="${sy(yA)}" x2="${sx(xHi)}" y2="${sy(yB)}"/>`;
-
   svg += `</svg>`;
   document.getElementById('scatter-container').innerHTML = svg;
 }
@@ -242,28 +227,47 @@ document.getElementById('vi-select').addEventListener('change', compute);
 document.getElementById('vd-select').addEventListener('change', compute);
 
 document.getElementById('csv-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(!file) return;
+  const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const parsed = Stats.parseCSV(ev.target.result);
-      const numericVars = parsed.headers.filter(h =>
-        parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h]))
-      );
+      const numericVars = parsed.headers.filter(h => parsed.rows.every(r => typeof r[h] === 'number' && !isNaN(r[h])));
       if(numericVars.length < 2){ alert('Precisa de pelo menos 2 colunas numéricas.'); return; }
-      DATA = parsed.rows;
-      ALL_VARS = numericVars;
+      DATA = parsed.rows; ALL_VARS = numericVars;
       document.getElementById('data-source').textContent = `CSV "${file.name}" (N = ${DATA.length})`;
-      populateSelects();
-      compute();
-    } catch(err){ alert('Erro ao ler CSV: ' + err.message); }
+      populateSelects(); compute();
+    } catch(err){ alert('Erro: ' + err.message); }
   };
   reader.readAsText(file);
 });
 
+// Quiz
+document.getElementById('quiz-container').innerHTML = WC.renderQuiz([
+  {
+    q: 'Um modelo de regressão simples retornou R² = 0,16 (p < 0,001) na sua amostra. Como você classificaria o tamanho do efeito pelos critérios de Cohen (1988)?',
+    options: [
+      { label: 'Pequeno', correct: false, explain: 'Pequeno corresponde a R² próximo de 0,02. Pelos critérios canônicos, R² = 0,16 fica acima da banda "pequena".' },
+      { label: 'Médio', correct: true, explain: 'Correto. Cohen (1988) classifica R² ≈ 0,13 como médio (via f² ≈ 0,15), portanto R² = 0,16 cai nessa banda.' },
+      { label: 'Grande', correct: false, explain: 'Grande seria R² ≥ 0,26 (f² ≥ 0,35). Está acima da banda média mas ainda abaixo do grande.' }
+    ]
+  },
+  {
+    q: 'Se p < 0,001, posso afirmar que o efeito é grande?',
+    options: [
+      { label: 'Sim, p baixo = efeito grande', correct: false, explain: 'Esse é um erro frequente. p é sobre significância estatística (chance do efeito ser zero na população); tamanho do efeito é uma grandeza separada (R², f², d). Com N grande, efeitos triviais aparecem com p < 0,001.' },
+      { label: 'Não — significância e magnitude são coisas diferentes', correct: true, explain: 'Exato. Sempre reporte ambos: o p mostra que o efeito não é zero; o R²/f² mostra <em>quão grande</em> ele é.' }
+    ]
+  }
+], { subtitle: 'Significância ≠ magnitude. Vamos fixar.' });
+
 populateSelects();
 compute();
 </script>
+<!-- Cloudflare Web Analytics — INSTRUÇÕES no guia de uso (PDF/DOCX).
+     1) Crie conta gratuita em dash.cloudflare.com
+     2) Web Analytics → Add a site → cadastre [seu-usuario].github.io
+     3) Cole o token aqui no lugar de COLE_SEU_TOKEN_AQUI e descomente a linha abaixo. -->
+<!-- <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;COLE_SEU_TOKEN_AQUI&quot;}"></script> -->
 </body>
 </html>

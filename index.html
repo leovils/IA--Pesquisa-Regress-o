@@ -3,70 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jornada Didática — Regressão Linear com Moderação</title>
+<title>Jornada Didática de Regressão Linear</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <div class="container">
 
   <header class="widget-header">
-    <div class="breadcrumb">Mestrado e Doutorado em Administração · MTPQI</div>
-    <h1>Jornada Didática — Regressão Linear</h1>
-    <div class="subtitle">Cinco estágios para construir, interpretar e diagnosticar modelos de regressão múltipla com moderação. Cada estágio é um widget interativo independente. Os dados ilustrativos vêm pré-carregados (N = 180), mas você pode subir seu próprio CSV em qualquer etapa.</div>
+    <div class="breadcrumb">Pós-graduação · Métodos Quantitativos</div>
+    <h1>Jornada Didática de Regressão Linear</h1>
+    <div class="subtitle">Cinco estágios interativos para compreender a regressão linear — da correlação aos diagnósticos. Cada estágio é autocontido, com um banco real de N = 180, controles para você experimentar e <strong>réguas visuais de tamanho de efeito</strong> com os cutoffs canônicos (Cohen, 1988; Aguinis et al., 2005; Hair et al., 2019; Green, 1991).</div>
   </header>
 
   <div class="intro-block">
-    <h2>Como funciona</h2>
-    <p>A regressão linear costuma ser apresentada como caixa-preta. Aqui, ela é montada peça por peça: você vê os β nascerem, o R² subir, os VIFs reagirem e os pressupostos serem testados em tempo real. A sequência abaixo é a ordem recomendada, mas cada widget é autocontido — sinta-se livre para pular.</p>
+    <h2>Como usar</h2>
+    <p>Os cinco estágios formam uma jornada — recomendo seguir na ordem na primeira vez. Cada widget permite (1) explorar com o banco pré-carregado, (2) subir seu próprio CSV, (3) ler interpretação narrativa, (4) testar entendimento com mini-quizzes, e (5) copiar a frase no formato APA pronta para colar no manuscrito. Esta versão (v2) adiciona réguas visuais de tamanho de efeito, comparação de modelos lado-a-lado e calculadora de N mínimo.</p>
   </div>
 
   <div class="journey-grid">
-
     <a href="01-correlacoes.html" class="journey-card">
       <div class="stage-num">ESTÁGIO I</div>
       <h3>Correlações</h3>
-      <p>Antes da regressão, a paisagem. Matriz de correlações de Pearson com heatmap interativo, scatter sob demanda e teste de significância de cada r.</p>
+      <p>A paisagem antes da regressão. Matriz interativa, r de Pearson com régua de Cohen (1988) e r² compartilhado.</p>
     </a>
-
     <a href="02-regressao-simples.html" class="journey-card">
       <div class="stage-num">ESTÁGIO II</div>
       <h3>Regressão Simples</h3>
-      <p>Uma VI, uma VD, uma reta. Veja o intercepto, a inclinação, o R² e a banda de confiança da regressão. Base para tudo que vem depois.</p>
+      <p>Uma VI, uma VD, uma reta. Régua dupla de R² e f² de Cohen. Frase APA pronta para colar.</p>
     </a>
-
     <a href="03-regressao-multipla.html" class="journey-card">
       <div class="stage-num">ESTÁGIO III</div>
       <h3>Regressão Múltipla</h3>
-      <p>O coração da jornada. Selecione preditores um a um e acompanhe os β, EP, t, p, R², ΔR² e VIFs mudando ao vivo. Compare modelos aninhados.</p>
+      <p>O coração da jornada. Selecione preditores, observe R²/R²ₐⱼ/VIF mudarem. Histórico clicável, comparação lado-a-lado, f² por preditor e calculadora N (Cohen/Green).</p>
     </a>
-
     <a href="04-moderacao.html" class="journey-card">
       <div class="stage-num">ESTÁGIO IV</div>
       <h3>Moderação</h3>
-      <p>Termo de interação centralizado, teste do β5, e gráfico de simple slopes em três níveis de W (–1 DP, média, +1 DP). Quando W amplifica o efeito de X em Y.</p>
+      <p>Termos de interação, simple slopes em três níveis de W. Régua de f² específica para moderação (Aguinis et al., 2005), com a régua de Cohen ao lado para comparação.</p>
     </a>
-
     <a href="05-pressupostos.html" class="journey-card">
       <div class="stage-num">ESTÁGIO V</div>
       <h3>Pressupostos</h3>
-      <p>Diagnóstico completo: normalidade (Jarque-Bera + QQ-plot), homocedasticidade (Breusch-Pagan + resíduos vs ajustados), independência (Durbin-Watson), multicolinearidade (VIF) e outliers (Cook's D).</p>
+      <p>Jarque-Bera, Breusch-Pagan, Durbin-Watson, VIF, Cook's D (regras 4/N e D&nbsp;&gt;&nbsp;1), leverage. Réguas para cada cutoff, com Q-Q plot e resíduos vs. ajustados.</p>
     </a>
-
+    <a href="referencias.html" class="journey-card" style="background: #fcf5e7; border-color: var(--gold-soft);">
+      <div class="stage-num">APOIO</div>
+      <h3>Referências Bibliográficas</h3>
+      <p>Lista completa em APA das obras citadas: Cohen, Hair, Field, Aguinis, Green, Cook &amp; Weisberg, Belsley, Tabachnick &amp; Fidell, entre outras.</p>
+    </a>
   </div>
 
-  <hr class="soft">
-
-  <div class="panel">
-    <h3 class="panel-title">Sobre o banco pré-carregado</h3>
-    <p>Os <strong>180 casos</strong> foram gerados a partir de um modelo populacional conhecido (os β verdadeiros estão documentados no acompanhamento). N foi calculado como o dobro do mínimo de Cohen (1988): <span class="mono">N ≥ 50 + 8k</span>, com k = 5 preditores por modelo, totalizando 90 — multiplicado por dois.</p>
-    <p class="muted mt-12">Variáveis: <span class="mono">VI1, VI2, VI3</span> (independentes), <span class="mono">W1</span> (moderadora), <span class="mono">VD1, VD2</span> (dependentes). W1 amplifica VI1→VD1 e VI2→VD2. Todos os pressupostos estão respeitados por construção.</p>
+  <div class="intro-block" style="margin-top: 36px;">
+    <h2>Banco pré-carregado</h2>
+    <p>N = 180 casos sintéticos com 4 preditores (VI1, VI2, VI3, W1), 1 moderadora (W1) e 2 variáveis dependentes (VD1, VD2). Todos os pressupostos da regressão foram respeitados por construção. <strong>W1 amplifica</strong> os efeitos de VI1 sobre VD1 e VI2 sobre VD2 — útil para demonstrar moderação. O dicionário completo e o gabarito populacional estão na planilha original.</p>
   </div>
 
   <footer class="widget-footer">
     <div class="glyph">✦ ✦ ✦</div>
-    <div>Material didático · Pós-Graduação em Administração · 2026</div>
+    <div>Material didático aberto · Hospedado via GitHub Pages · v2 com tamanhos de efeito, APA copiável e calculadora de N</div>
   </footer>
 
 </div>
+<!-- Cloudflare Web Analytics — INSTRUÇÕES no guia de uso (PDF/DOCX).
+     1) Crie conta gratuita em dash.cloudflare.com
+     2) Web Analytics → Add a site → cadastre [seu-usuario].github.io
+     3) Cole o token aqui no lugar de COLE_SEU_TOKEN_AQUI e descomente a linha abaixo. -->
+<!-- <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;COLE_SEU_TOKEN_AQUI&quot;}"></script> -->
 </body>
 </html>

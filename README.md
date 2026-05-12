@@ -1,89 +1,69 @@
-# Jornada Didática — Regressão Linear com Moderação
+# Jornada Didática de Regressão Linear — v2
 
-Material interativo em HTML para ensino de **regressão linear múltipla com moderação** em programas de pós-graduação em Administração. Cinco widgets independentes, em ordem pedagógica, que rodam direto no navegador — sem servidor, sem instalação, prontos para hospedar no GitHub Pages.
+Material pedagógico interativo para pós-graduação em administração e áreas afins. Cinco widgets HTML standalone, hospedáveis em GitHub Pages, cobrindo a regressão linear da correlação aos diagnósticos.
 
-## A jornada
+## O que tem nesta versão (v2)
 
-| Estágio | Widget | O que se aprende |
-|--------|--------|------------------|
-| I | **Correlações** | Matriz de Pearson interativa; clique numa célula para ver o diagrama de dispersão, r, t, p e interpretação. |
-| II | **Regressão Simples** | Uma VI e uma VD: intercepto, inclinação, EP, t, p, R², banda de confiança 95% da reta. |
-| III | **Regressão Múltipla** | O coração da jornada. Marque preditores um a um e veja β, EP, t, p, IC 95%, R², R² ajustado, ΔR² e VIF mudando ao vivo. |
-| IV | **Moderação** | Centralização automática de X e W, criação do termo X×W, gráfico de *simple slopes* em três níveis de W (–1 DP, média, +1 DP). |
-| V | **Pressupostos** | Painel completo: Jarque-Bera + QQ-plot, Breusch-Pagan + resíduos vs ajustados, Durbin-Watson, VIFs e Cook's D. |
+Em relação à versão inicial, foram adicionados:
 
-## Banco pré-carregado
+- **Réguas visuais de tamanho de efeito** em todos os widgets, com bandas coloridas e marcador para o valor observado
+- **Frase no formato APA copiável** em cada widget — pronta para colar no manuscrito
+- **Mini-quiz entre estágios** (2 a 3 perguntas com feedback) para fixar conceitos críticos
+- **Histórico de modelos clicável** no widget 3 — restaure modelos anteriores com um clique
+- **Comparação lado-a-lado** de dois modelos fixados (widget 3)
+- **Calculadora de N mínimo** com critérios de Cohen (1988) e Green (1991)
+- **Página de referências bibliográficas** em formato APA com todas as obras citadas
+- **Citações in-line** com tooltip da referência completa (Cohen, 1988; Hair et al., 2019; etc.)
 
-Cada widget vem com **180 casos** gerados a partir de um modelo populacional conhecido:
-
-- **VI1, VI2, VI3** — variáveis independentes (escala 1–7)
-- **W1** — moderadora
-- **VD1, VD2** — variáveis dependentes
-- **N** = 2 × mínimo de Cohen (1988): `N ≥ 50 + 8k`, com k = 5 → 90 × 2 = 180
-- W1 amplifica VI1 → VD1 e VI2 → VD2 (interação significativa por construção)
-- Todos os cinco pressupostos da regressão são respeitados
-
-O usuário também pode subir um **CSV próprio** em qualquer widget (vírgula, ponto-e-vírgula ou tab como separador; primeira linha = cabeçalho).
-
-## Como usar
-
-### Localmente
-
-Basta abrir `index.html` num navegador. Não há dependências externas.
-
-```bash
-git clone <este-repo>
-cd regressao-didatica
-# abrir index.html no navegador, ou:
-python3 -m http.server 8000
-# então: http://localhost:8000
-```
-
-### Publicar no GitHub Pages
-
-1. Suba o repositório ao GitHub.
-2. Em **Settings → Pages**, escolha a branch `main` e a pasta `/ (root)`.
-3. Em ~1 minuto, o material estará disponível em `https://<seu-usuário>.github.io/<nome-do-repo>/`.
-
-## Arquitetura
+## Estrutura
 
 ```
 regressao-didatica/
-├── index.html                  ← Mapa da jornada
-├── 01-correlacoes.html
-├── 02-regressao-simples.html
-├── 03-regressao-multipla.html
-├── 04-moderacao.html
-├── 05-pressupostos.html
+├── index.html              ← Landing/mapa da jornada
+├── 01-correlacoes.html     ← Matriz Pearson + régua de r (Cohen)
+├── 02-regressao-simples.html  ← OLS simples + régua R²/f² + APA
+├── 03-regressao-multipla.html ← Múltipla + histórico + side-by-side + calc N
+├── 04-moderacao.html       ← Interação + simple slopes + régua Aguinis
+├── 05-pressupostos.html    ← Diagnósticos completos + réguas + APA
+├── referencias.html        ← Bibliografia em APA
+├── README.md
 └── assets/
-    ├── style.css               ← Estilos compartilhados
-    ├── dados.js                ← 180 casos pré-carregados
-    └── stats.js                ← Biblioteca estatística (OLS, VIF, BP, JB, DW, Cook's D)
+    ├── dados.js            ← Banco pré-carregado N=180 embutido
+    ├── stats.js            ← Biblioteca estatística JS pura (validada vs statsmodels)
+    ├── widgets-common.js   ← Componentes UI compartilhados (régua, APA, quiz, calc N)
+    └── style.css           ← Estilo Cinzel/Inter, paleta pergaminho
 ```
 
-### A biblioteca `stats.js`
+## Tamanhos de efeito implementados
 
-Implementação pura em JavaScript, sem dependências, dos seguintes procedimentos:
+| Indicador | Cutoffs | Onde aparece | Referência |
+|-----------|---------|--------------|-----------|
+| r de Pearson | 0,10 / 0,30 / 0,50 | Widget 1 | Cohen (1988) |
+| R² do modelo | 0,02 / 0,13 / 0,26 | Widgets 2, 3 | Cohen (1988) |
+| Cohen's f² (modelo) | 0,02 / 0,15 / 0,35 | Widgets 2, 3 | Cohen (1988) |
+| f² incremento (por VI) | 0,02 / 0,15 / 0,35 | Widget 3 | Cohen et al. (2003) |
+| f² interação (moderação) | 0,005 / 0,01 / 0,025 | Widget 4 | Aguinis et al. (2005) |
+| VIF | < 5 / 5–10 / ≥ 10 | Widgets 3, 5 | Hair et al. (2019) |
+| Assimetria \|skew\| | < 1 / 1–2 / ≥ 2 | Widget 5 | Hair et al. (2019) |
+| Curtose \|kurt\| | < 3 / 3–7 / ≥ 7 | Widget 5 | Hair et al. (2019); Curran et al. (1996) |
+| Durbin-Watson | 1,5–2,5 OK | Widget 5 | Field (2018) |
+| Cook's D | 4/N e D > 1 | Widget 5 | Bollen & Jackman (1990); Cook & Weisberg (1982) |
+| Leverage | h > 2(k+1)/N | Widget 5 | Belsley et al. (1980) |
+| N mínimo | 50+8k (Cohen); 104+k (Green β) | Widget 3 | Cohen (1988); Green (1991) |
 
-- **OLS** via Gauss-Jordan estável: β, EP, t, p, IC 95%, R², R² ajustado, F, resíduos, ajustados
-- **VIF** por regressões auxiliares
-- **Diagnósticos**: Durbin-Watson, Breusch-Pagan (Koenker), Jarque-Bera
-- **Influência**: Cook's D e *leverage* (h_ii)
-- **Distribuições**: t-Student, F, χ² e Normal (com inversa via Beasley-Springer-Moro)
-- **Utilitários**: parser de CSV, centralização, padronização, formatadores
+## Como hospedar no GitHub Pages
 
-Os resultados foram validados contra `statsmodels` (Python) — números idênticos até quatro casas decimais.
+1. Crie um repositório público chamado `regressao-didatica` no GitHub
+2. Faça upload de todos os arquivos preservando a estrutura de pastas (a pasta `assets/` precisa ir junto)
+3. Em **Settings → Pages**, escolha **Source: Deploy from a branch**, **Branch: main**, **Folder: / (root)**, e clique em **Save**
+4. Após ~1 minuto, o site estará em `https://[seu-usuario].github.io/regressao-didatica/`
 
-## Estética
+Os widgets funcionam offline também — basta abrir `index.html` direto no navegador.
 
-Visual sóbrio acadêmico com toques pontuais inspirados no estilo "Grimório": títulos em **Cinzel**, corpo em **Inter**, números em **JetBrains Mono**, paleta pergaminho discreta (creme #faf7f2, dourado #b08d57). Pensado para ser projetado em sala e legível em diferentes resoluções.
+## Banco pré-carregado
 
-## Licença
+N = 180 casos sintéticos. Variáveis: VI1, VI2, VI3 (preditores), W1 (moderadora), VD1, VD2 (respostas). Todos os pressupostos da regressão respeitados por construção. W1 amplifica os efeitos de VI1→VD1 e VI2→VD2 — útil para demonstrar moderação. Os widgets também aceitam CSV próprio (botão de upload em cada um).
 
-Material didático de uso livre para fins educacionais. Citação sugerida:
+## Créditos
 
-> Jornada Didática de Regressão Linear com Moderação. Programa de Pós-Graduação em Administração, 2026.
-
----
-
-*"A regressão não é uma caixa-preta. Os β nascem, o R² sobe, os VIFs reagem — e tudo acontece diante dos olhos do aluno."*
+Material desenvolvido para a disciplina **Métodos e Técnicas de Pesquisa Quantitativa I (MTPQI)** do PPGA/PPGP UNINOVE. Estética inspirada no Grimório de Odin Dinho.
