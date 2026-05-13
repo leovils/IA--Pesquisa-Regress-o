@@ -298,16 +298,26 @@
 
   function parseCSV(text){
     const lines = text.trim().split(/\r?\n/);
-    const headers = lines[0].split(/[,;\t]/).map(s => s.trim());
+    if(lines.length === 0) return { headers: [], rows: [] };
+    // Detectar separador a partir da linha de cabeçalho
+    // Prioridade: tab → ponto-e-vírgula → vírgula
+    const firstLine = lines[0];
+    let sep;
+    if(firstLine.includes('\t')) sep = '\t';
+    else if(firstLine.includes(';')) sep = ';';
+    else sep = ',';
+    const headers = firstLine.split(sep).map(s => s.trim());
     const rows = [];
     for(let i=1;i<lines.length;i++){
-      const vals = lines[i].split(/[,;\t]/).map(s => s.trim());
+      if(!lines[i].trim()) continue;
+      const vals = lines[i].split(sep).map(s => s.trim());
       if(vals.length !== headers.length) continue;
       const obj = {};
       headers.forEach((h,j) => {
+        // Trocar vírgula decimal por ponto antes de converter
         const v = vals[j].replace(',', '.');
         const num = parseFloat(v);
-        obj[h] = isNaN(num) ? v : num;
+        obj[h] = isNaN(num) ? vals[j] : num;
       });
       rows.push(obj);
     }
