@@ -80,6 +80,25 @@
     <div id="apa-container"></div>
   </div>
 
+  <div class="panel">
+    <h3 class="panel-title">🧪 Laboratório: o impacto de uma observação influente</h3>
+    <div class="panel-subtitle">Arraste o <strong style="color: #a04444;">ponto vermelho</strong> pelo gráfico e veja a reta inteira girar, o R² mudar e o Cook's D explodir. É a sua chance de ver — concretamente — por que uma única observação extrema pode distorcer um modelo inteiro. Use VI1 vs VD1 como cenário base.</div>
+    <div id="lab-container"></div>
+    <div id="lab-info" class="muted text-center" style="padding: 12px 0; font-size: 13px;">Selecione um par de variáveis abaixo para começar.</div>
+    <div class="grid-equal-2" style="margin-top: 14px;">
+      <div class="control-group">
+        <label class="control-label">VI</label>
+        <select id="lab-vi-select"></select>
+      </div>
+      <div class="control-group">
+        <label class="control-label">VD</label>
+        <select id="lab-vd-select"></select>
+      </div>
+    </div>
+    <div id="lab-kpis"></div>
+    <button class="btn secondary mt-12" id="lab-reset" style="width:100%">↺ Restaurar posição original do ponto</button>
+  </div>
+
   <div id="quiz-container"></div>
 
   <footer class="widget-footer">
@@ -373,6 +392,209 @@ document.getElementById('quiz-container').innerHTML = WC.renderQuiz([
 
 populateLists();
 compute();
+
+// =====================================================================
+// LABORATÓRIO: Outlier arrastável
+// =====================================================================
+(function(){
+  let labVI = 'VI1', labVD = 'VD1';
+  let extraPoint = null;  // { x, y } no espaço de dados (não pixels)
+  let originalExtra = null;
+  let isDragging = false;
+  let labSx, labSy, labInvSx, labInvSy;  // funções de escala
+
+  function labPopulateSelects(){
+    const viSel = document.getElementById('lab-vi-select');
+    const vdSel = document.getElementById('lab-vd-select');
+    const opts = ['VI1','VI2','VI3','W1','VD1','VD2'];
+    viSel.innerHTML = ''; vdSel.innerHTML = '';
+    opts.forEach(v => {
+      viSel.innerHTML += `<option value="${v}" ${v===labVI?'selected':''}>${v}</option>`;
+      vdSel.innerHTML += `<option value="${v}" ${v===labVD?'selected':''}>${v}</option>`;
+    });
+  }
+
+  function labCompute(){
+    if(labVI === labVD){
+      document.getElementById('lab-container').innerHTML = '';
+      document.getElementById('lab-info').innerHTML = '<span class="badge bad">VI e VD precisam ser diferentes</span>';
+      return;
+    }
+    const xBase = DATA.map(r => r[labVI]);
+    const yBase = DATA.map(r => r[labVD]);
+
+    // Se ainda não criou o ponto extra, posicionar inicialmente no canto superior direito (longe da nuvem)
+    if(!extraPoint){
+      const xMin = Math.min(...xBase), xMax = Math.max(...xBase);
+      const yMin = Math.min(...yBase), yMax = Math.max(...yBase);
+      // Iniciar dentro da nuvem (perto da média), bem comportado
+      extraPoint = { x: (xMin+xMax)/2, y: (yMin+yMax)/2 };
+      originalExtra = { ...extraPoint };
+    }
+
+    // Conjunto com o ponto extra incluído
+    const x = xBase.concat([extraPoint.x]);
+    const y = yBase.concat([extraPoint.y]);
+    const X = x.map(v => [v]);
+    const m = Stats.ols(X, y);
+    const mBase = Stats.ols(xBase.map(v => [v]), yBase);  // sem o ponto extra
+    const cook = Stats.cooksDistance(m);
+    const cookExtra = cook.D[cook.D.length-1];
+
+    // Escala (com pouco padding extra pra o ponto extra ter espaço)
+    const xMin = Math.min(...x), xMax = Math.max(...x);
+    const yMin = Math.min(...y), yMax = Math.max(...y);
+    const xpad = (xMax-xMin)*0.10, ypad = (yMax-yMin)*0.10;
+    const xLo = xMin-xpad, xHi = xMax+xpad, yLo = yMin-ypad, yHi = yMax+ypad;
+
+    const w = 560, h = 360, pad = {top: 20, right: 24, bottom: 50, left: 60};
+    const innerW = w-pad.left-pad.right, innerH = h-pad.top-pad.bottom;
+    labSx = v => pad.left + (v-xLo)/(xHi-xLo) * innerW;
+    labSy = v => pad.top + (1-(v-yLo)/(yHi-yLo)) * innerH;
+    // Inversa para arrasto
+    labInvSx = px => xLo + (px-pad.left)/innerW * (xHi-xLo);
+    labInvSy = py => yLo + (1-(py-pad.top)/innerH) * (yHi-yLo);
+
+    let svg = `<svg id="lab-svg" class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" style="user-select: none;">`;
+    // Grid
+    for(let k=0;k<=5;k++){
+      const xv = xLo+(xHi-xLo)*k/5, yv = yLo+(yHi-yLo)*k/5;
+      svg += `<line class="grid-line" x1="${labSx(xv)}" y1="${pad.top}" x2="${labSx(xv)}" y2="${h-pad.bottom}"/>`;
+      svg += `<line class="grid-line" x1="${pad.left}" y1="${labSy(yv)}" x2="${w-pad.right}" y2="${labSy(yv)}"/>`;
+      svg += `<text class="axis-text" x="${labSx(xv)}" y="${h-pad.bottom+16}" text-anchor="middle">${xv.toFixed(1)}</text>`;
+      svg += `<text class="axis-text" x="${pad.left-6}" y="${labSy(yv)+4}" text-anchor="end">${yv.toFixed(1)}</text>`;
+    }
+    svg += `<line class="axis-line" x1="${pad.left}" y1="${h-pad.bottom}" x2="${w-pad.right}" y2="${h-pad.bottom}"/>`;
+    svg += `<line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${h-pad.bottom}"/>`;
+    svg += `<text class="axis-title" x="${pad.left+innerW/2}" y="${h-10}" text-anchor="middle">${labVI}</text>`;
+    svg += `<text class="axis-title" x="${-pad.top-innerH/2}" y="14" text-anchor="middle" transform="rotate(-90)">${labVD}</text>`;
+
+    // Reta base (cinza, sem o ponto extra) — só mostra se o extra está fora da nuvem
+    const baseExtremoBaixo = mBase.beta[0] + mBase.beta[1]*xLo;
+    const baseExtremoAlto  = mBase.beta[0] + mBase.beta[1]*xHi;
+    svg += `<line x1="${labSx(xLo)}" y1="${labSy(baseExtremoBaixo)}" x2="${labSx(xHi)}" y2="${labSy(baseExtremoAlto)}" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.6"/>`;
+
+    // Reta com o ponto extra (dourada)
+    const extremoBaixo = m.beta[0] + m.beta[1]*xLo;
+    const extremoAlto  = m.beta[0] + m.beta[1]*xHi;
+    svg += `<line x1="${labSx(xLo)}" y1="${labSy(extremoBaixo)}" x2="${labSx(xHi)}" y2="${labSy(extremoAlto)}" stroke="#b08d57" stroke-width="2.5"/>`;
+
+    // Pontos do banco (azuis)
+    for(let i=0;i<xBase.length;i++){
+      svg += `<circle cx="${labSx(xBase[i])}" cy="${labSy(yBase[i])}" r="3" fill="#2c5f8d" fill-opacity="0.5" stroke="white" stroke-width="0.5"/>`;
+    }
+
+    // Ponto extra (vermelho, arrastável, maior)
+    svg += `<circle id="lab-extra-point" cx="${labSx(extraPoint.x)}" cy="${labSy(extraPoint.y)}" r="9" fill="#a04444" stroke="white" stroke-width="2" style="cursor: grab; filter: drop-shadow(0 1px 3px rgba(160,68,68,0.4));"/>`;
+    svg += `<text x="${labSx(extraPoint.x)}" y="${labSy(extraPoint.y) - 14}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#a04444" style="pointer-events: none;">arrastar</text>`;
+
+    svg += `</svg>`;
+    document.getElementById('lab-container').innerHTML = svg;
+    document.getElementById('lab-info').innerHTML = `
+      <span style="font-size: 12px; color: var(--ink-soft);">
+        <span style="display: inline-block; width: 18px; height: 2px; background: #8a8a8a; vertical-align: middle; margin-right: 4px;"></span> Reta sem o ponto extra ·
+        <span style="display: inline-block; width: 18px; height: 3px; background: #b08d57; vertical-align: middle; margin-right: 4px;"></span> Reta com o ponto extra ·
+        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #a04444; vertical-align: middle; margin-right: 4px;"></span> Ponto que você está movendo
+      </span>
+    `;
+
+    // KPIs
+    const cookCutoff = 4 / m.n;
+    const cookStatus = cookExtra > 1 ? 'bad' : (cookExtra > cookCutoff ? 'warn' : 'ok');
+    const cookLabel = cookExtra > 1 ? 'crítico' : (cookExtra > cookCutoff ? 'influente' : 'normal');
+    const r2Delta = m.r2 - mBase.r2;
+    const slopeDelta = m.beta[1] - mBase.beta[1];
+
+    document.getElementById('lab-kpis').innerHTML = `
+      <div class="kpi-grid mt-12">
+        <div class="kpi"><div class="kpi-label">R² (sem o ponto)</div><div class="kpi-value">${Stats.fmtBr(mBase.r2,3)}</div></div>
+        <div class="kpi highlight"><div class="kpi-label">R² (com o ponto)</div><div class="kpi-value">${Stats.fmtBr(m.r2,3)}</div><div class="kpi-sub">${r2Delta>=0?'↑':'↓'} ${Math.abs(r2Delta).toFixed(3).replace('.',',')}</div></div>
+        <div class="kpi"><div class="kpi-label">β₁ (com o ponto)</div><div class="kpi-value">${Stats.fmtBr(m.beta[1],3)}</div><div class="kpi-sub">${slopeDelta>=0?'↑':'↓'} ${Math.abs(slopeDelta).toFixed(3).replace('.',',')}</div></div>
+        <div class="kpi highlight">
+          <div class="kpi-label">Cook's D do ponto vermelho</div>
+          <div class="kpi-value">${Stats.fmtBr(cookExtra,3)}</div>
+          <div class="kpi-sub"><span class="badge ${cookStatus}">${cookLabel}</span></div>
+        </div>
+      </div>
+      <div class="muted" style="font-size: 11.5px; margin-top: 8px;">Cutoffs: 4/N = ${cookCutoff.toFixed(4).replace('.',',')} · D > 1 (Cook & Weisberg, 1982)</div>
+    `;
+
+    // Attach drag handlers
+    const ext = document.getElementById('lab-extra-point');
+    if(ext){
+      ext.addEventListener('mousedown', startDrag);
+      ext.addEventListener('touchstart', startDragTouch, {passive:false});
+    }
+  }
+
+  function startDrag(e){
+    e.preventDefault();
+    isDragging = true;
+    document.getElementById('lab-extra-point').style.cursor = 'grabbing';
+    window.addEventListener('mousemove', onDrag);
+    window.addEventListener('mouseup', stopDrag);
+  }
+  function startDragTouch(e){
+    e.preventDefault();
+    isDragging = true;
+    window.addEventListener('touchmove', onDragTouch, {passive:false});
+    window.addEventListener('touchend', stopDrag);
+  }
+  function onDrag(e){
+    if(!isDragging) return;
+    const svg = document.getElementById('lab-svg');
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const ctm = svg.getScreenCTM().inverse();
+    const svgP = pt.matrixTransform(ctm);
+    extraPoint.x = labInvSx(svgP.x);
+    extraPoint.y = labInvSy(svgP.y);
+    labCompute();
+  }
+  function onDragTouch(e){
+    if(!isDragging || !e.touches[0]) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const svg = document.getElementById('lab-svg');
+    const pt = svg.createSVGPoint();
+    pt.x = t.clientX; pt.y = t.clientY;
+    const ctm = svg.getScreenCTM().inverse();
+    const svgP = pt.matrixTransform(ctm);
+    extraPoint.x = labInvSx(svgP.x);
+    extraPoint.y = labInvSy(svgP.y);
+    labCompute();
+  }
+  function stopDrag(){
+    isDragging = false;
+    const ext = document.getElementById('lab-extra-point');
+    if(ext) ext.style.cursor = 'grab';
+    window.removeEventListener('mousemove', onDrag);
+    window.removeEventListener('mouseup', stopDrag);
+    window.removeEventListener('touchmove', onDragTouch);
+    window.removeEventListener('touchend', stopDrag);
+  }
+
+  // Handlers
+  document.getElementById('lab-vi-select').addEventListener('change', e => {
+    labVI = e.target.value;
+    extraPoint = null; originalExtra = null;
+    labCompute();
+  });
+  document.getElementById('lab-vd-select').addEventListener('change', e => {
+    labVD = e.target.value;
+    extraPoint = null; originalExtra = null;
+    labCompute();
+  });
+  document.getElementById('lab-reset').addEventListener('click', () => {
+    if(originalExtra){
+      extraPoint = { ...originalExtra };
+      labCompute();
+    }
+  });
+
+  labPopulateSelects();
+  labCompute();
+})();
 </script>
 <!-- Cloudflare Web Analytics -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c02608684afe4b2799c74ca90261d2f7"}'></script>

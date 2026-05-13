@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sobre — Jornada Didática de Regressão Linear</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="container">
+
+  <header class="widget-header">
+    <a href="index.html" class="home-link">← Jornada</a>
+    <div class="breadcrumb">Apoio · Sobre o material</div>
+    <h1>Sobre este material</h1>
+    <div class="subtitle">Material didático aberto desenvolvido para o ensino de regressão linear em programas de pós-graduação stricto sensu em administração e áreas afins. Cinco estágios interativos cobrindo da correlação aos diagnósticos de pressupostos.</div>
+  </header>
+
+  <div class="panel">
+    <h3 class="panel-title">Autoria</h3>
+    <p style="margin: 8px 0 16px;"><strong>Prof. Dr. Leonardo Vils</strong><br>
+    Professor Pleno do Programa de Pós-Graduação em Administração (PPGA) e do Programa de Pós-Graduação em Gestão de Projetos (PPGP)<br>
+    Universidade Nove de Julho — UNINOVE</p>
+    <p style="margin: 8px 0; font-size: 13.5px; color: var(--ink-soft);">
+      ORCID: <a href="https://orcid.org/0000-0003-3059-1967" target="_blank" rel="noopener" style="color: var(--gold-deep);">0000-0003-3059-1967</a><br>
+      Lattes: <a href="http://lattes.cnpq.br/3969955798466284" target="_blank" rel="noopener" style="color: var(--gold-deep);">3969955798466284</a>
+    </p>
+  </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Como citar este material</h3>
+    <div class="panel-subtitle">Caso utilize este material em aulas, oficinas, materiais didáticos ou publicações, agradeço a citação no formato APA:</div>
+    <div class="apa-box">
+      <div class="apa-head">
+        <span class="apa-label">Formato APA — citação sugerida</span>
+      </div>
+      <div class="apa-text">
+        Vils, L. (2026). <em>Jornada Didática de Regressão Linear: cinco estágios interativos para pós-graduação em administração</em> (Versão 2) [Material didático aberto]. Universidade Nove de Julho. https://leovils.github.io/IA--Pesquisa-Regress-o/
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Contexto pedagógico</h3>
+    <p>O material foi desenhado originalmente para a disciplina <strong>Métodos e Técnicas de Pesquisa Quantitativa I (MTPQI)</strong> dos programas de pós-graduação da UNINOVE, e tem três objetivos pedagógicos principais:</p>
+    <ul style="margin: 8px 0 8px 24px; line-height: 1.7;">
+      <li>Resolver a dificuldade comum dos alunos em <strong>distinguir significância estatística (p) de magnitude do efeito (R², f²)</strong>, mostrando as duas grandezas lado a lado em todos os estágios.</li>
+      <li>Reduzir o tempo gasto pelos alunos com a <strong>escrita formatada de resultados</strong> (APA), oferecendo a frase pronta em cada análise para copiar e adaptar.</li>
+      <li>Permitir <strong>experimentação ao vivo</strong> com bancos próprios — o aluno sobe seu CSV e vê instantaneamente a regressão completa, os pressupostos e o relato APA.</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Licença de uso</h3>
+    <p>Este material é distribuído sob licença aberta para fins educacionais. É permitido:</p>
+    <ul style="margin: 8px 0 8px 24px; line-height: 1.7;">
+      <li><strong>Compartilhar</strong> — copiar e redistribuir o material em qualquer suporte ou formato</li>
+      <li><strong>Adaptar</strong> — remixar, transformar e construir sobre o material para fins acadêmicos não-comerciais</li>
+      <li><strong>Hospedar</strong> em sua própria infraestrutura (GitHub Pages, servidor institucional, ambiente virtual de aprendizagem)</li>
+    </ul>
+    <p style="margin-top: 10px;">É solicitado, em qualquer caso, que se mantenha a atribuição da autoria original e a citação no formato indicado acima.</p>
+  </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Stack técnica</h3>
+    <p>Material 100% standalone, sem dependências de servidor, banco de dados ou bibliotecas externas. Tecnologias usadas:</p>
+    <ul style="margin: 8px 0 8px 24px; line-height: 1.7;">
+      <li><strong>HTML5 + CSS3 + JavaScript puro</strong> (ES6+) — funciona em qualquer navegador moderno</li>
+      <li><strong>Biblioteca estatística própria</strong> (<code>stats.js</code>) com cerca de 400 linhas — implementação JS pura de OLS, VIF, Breusch-Pagan, Durbin-Watson, Jarque-Bera, Cook's D, Pearson, distribuições t, F e χ². Validada contra <code>statsmodels</code> do Python — todos os números batem até a terceira casa decimal.</li>
+      <li><strong>Animações SVG via CSS</strong> (<code>@keyframes</code>, <code>transition</code>) — sem GSAP, sem D3, sem jQuery</li>
+      <li><strong>Hospedagem</strong> via GitHub Pages (gratuito, sem manutenção)</li>
+      <li><strong>Analytics</strong> via Cloudflare Web Analytics (sem cookies, sem rastreamento individual, conforme LGPD por design)</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Banco didático pré-carregado</h3>
+    <p>O banco vem com 180 casos sintéticos e 6 variáveis: três preditores (VI1, VI2, VI3), uma moderadora (W1) e duas variáveis dependentes (VD1, VD2). Características relevantes para o ensino:</p>
+    <ul style="margin: 8px 0 8px 24px; line-height: 1.7;">
+      <li><strong>N = 180</strong> — acima do mínimo de Green (1991) para até 9 preditores</li>
+      <li>Todos os <strong>pressupostos da regressão respeitados por construção</strong> (normalidade dos resíduos, homocedasticidade, independência, baixa multicolinearidade)</li>
+      <li><strong>W1 amplifica</strong> os efeitos de VI1 sobre VD1 e VI2 sobre VD2 — útil para demonstrar moderação significativa</li>
+      <li>Seed reproduzível: 20260512</li>
+    </ul>
+    <p>Os widgets também aceitam <strong>upload de CSV próprio</strong> — formatos brasileiro (separador ponto-e-vírgula, decimal vírgula) e internacional (separador vírgula, decimal ponto) são detectados automaticamente.</p>
+  </div>
+
+  <div class="panel">
+    <h3 class="panel-title">Contato e contribuições</h3>
+    <p>Sugestões, correções, ideias para próximas versões ou relato de bugs:</p>
+    <ul style="margin: 8px 0 8px 24px; line-height: 1.7;">
+      <li><strong>Email institucional</strong>: contato via Programa de Pós-Graduação em Administração da UNINOVE</li>
+      <li><strong>Repositório GitHub</strong>: <a href="https://github.com/leovils/IA--Pesquisa-Regress-o" target="_blank" rel="noopener" style="color: var(--gold-deep);">github.com/leovils/IA--Pesquisa-Regress-o</a> — use a aba <em>Issues</em> para reportar problemas</li>
+      <li><strong>Lattes</strong>: <a href="http://lattes.cnpq.br/3969955798466284" target="_blank" rel="noopener" style="color: var(--gold-deep);">currículo completo</a></li>
+    </ul>
+  </div>
+
+  <div class="intro-block">
+    <h2>Quer adaptar para sua disciplina?</h2>
+    <p>O material foi pensado para ser facilmente adaptável. Você pode trocar o banco didático (basta substituir <code>assets/dados.js</code> e ajustar os nomes das variáveis nos cinco HTMLs), modificar o estilo visual (paleta de cores está em variáveis CSS no <code>assets/style.css</code>), traduzir para outras línguas, ou estender com novos estágios. Em caso de dúvidas sobre customização, abra um issue no GitHub.</p>
+  </div>
+
+  <footer class="widget-footer">
+    <div class="glyph">✦ ✦ ✦</div>
+    <div>Material didático aberto · Versão 2 com animações, tamanhos de efeito e referências bibliográficas completas</div>
+  </footer>
+
+</div>
+<!-- Cloudflare Web Analytics -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c02608684afe4b2799c74ca90261d2f7"}'></script>
+<!-- End Cloudflare Web Analytics -->
+</body>
+</html>

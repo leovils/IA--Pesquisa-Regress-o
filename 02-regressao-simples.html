@@ -8,6 +8,7 @@
 <script src="assets/dados.js"></script>
 <script src="assets/stats.js"></script>
 <script src="assets/widgets-common.js"></script>
+<script src="assets/animations.js"></script>
 </head>
 <body>
 <div class="container">
@@ -263,6 +264,19 @@ document.getElementById('quiz-container').innerHTML = WC.renderQuiz([
 
 populateSelects();
 compute();
+
+// Animação da reta sendo ajustada (só na primeira visita)
+setTimeout(() => {
+  const svgEl = document.querySelector('#scatter-container svg');
+  if(svgEl){
+    Anim.regressionFit(svgEl, { key: 'widget2-fit' });
+    const panel = document.getElementById('scatter-container').closest('.panel');
+    Anim.addReplayButton(panel, () => {
+      const svg = document.querySelector('#scatter-container svg');
+      Anim.regressionFit(svg, { key: 'widget2-fit', force: true });
+    });
+  }
+}, 100);
 </script>
 <!-- Cloudflare Web Analytics -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c02608684afe4b2799c74ca90261d2f7"}'></script>

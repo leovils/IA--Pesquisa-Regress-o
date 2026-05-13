@@ -8,6 +8,7 @@
 <script src="assets/dados.js"></script>
 <script src="assets/stats.js"></script>
 <script src="assets/widgets-common.js"></script>
+<script src="assets/animations.js"></script>
 </head>
 <body>
 <div class="container">
@@ -287,7 +288,7 @@ function drawSlopes(x, w, y, b0, bx, bw, bxw, xVar, wVar, yVar){
   svg += `<text class="axis-title" x="${pad.left+innerW/2}" y="${h-10}" text-anchor="middle">${xVar} (centralizado)</text>`;
   svg += `<text class="axis-title" x="${-pad.top-innerH/2}" y="14" text-anchor="middle" transform="rotate(-90)">${yVar} (previsto)</text>`;
   lines.forEach((l, i) => {
-    svg += `<line x1="${sx(xLo)}" y1="${sy(l.yLo)}" x2="${sx(xHi)}" y2="${sy(l.yHi)}" stroke="${colors[i]}" stroke-width="2.5" fill="none"/>`;
+    svg += `<line class="simple-slope" data-slope-idx="${i}" x1="${sx(xLo)}" y1="${sy(l.yLo)}" x2="${sx(xHi)}" y2="${sy(l.yHi)}" stroke="${colors[i]}" stroke-width="2.5" fill="none"/>`;
   });
   svg += `</svg>`;
   document.getElementById('slopes-container').innerHTML = svg;
@@ -354,6 +355,19 @@ document.getElementById('quiz-container').innerHTML = WC.renderQuiz([
 
 populateSelects();
 compute();
+
+// Animação de simple slopes em leque (só na primeira visita)
+setTimeout(() => {
+  const svgEl = document.querySelector('#slopes-container svg');
+  if(svgEl){
+    Anim.simpleSlopesFanAuto(svgEl, { key: 'widget4-slopes' });
+    const panel = document.getElementById('slopes-container').closest('.panel');
+    Anim.addReplayButton(panel, () => {
+      const svg = document.querySelector('#slopes-container svg');
+      Anim.simpleSlopesFanAuto(svg, { key: 'widget4-slopes', force: true });
+    });
+  }
+}, 100);
 </script>
 <!-- Cloudflare Web Analytics -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c02608684afe4b2799c74ca90261d2f7"}'></script>

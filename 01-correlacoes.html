@@ -8,6 +8,7 @@
 <script src="assets/dados.js"></script>
 <script src="assets/stats.js"></script>
 <script src="assets/widgets-common.js"></script>
+<script src="assets/animations.js"></script>
 </head>
 <body>
 <div class="container">
@@ -235,6 +236,21 @@ document.getElementById('quiz-container').innerHTML = WC.renderQuiz([
 
 buildMatrix();
 showScatter('VI1', 'VD1');
+
+// Animação de revelação da matriz (só na primeira visita)
+setTimeout(() => {
+  const svgEl = document.querySelector('#matrix-container svg');
+  if(svgEl){
+    const ctrl = Anim.matrixReveal(svgEl, { key: 'widget1-matrix' });
+    // Sempre adiciona botão de rever (a animação interna decide se roda automática)
+    const panel = document.getElementById('matrix-container').closest('.panel');
+    Anim.addReplayButton(panel, () => {
+      // Forçar reanimação sem depender da flag
+      const svg = document.querySelector('#matrix-container svg');
+      const ctrl2 = Anim.matrixReveal(svg, { key: 'widget1-matrix', force: true });
+    });
+  }
+}, 50);
 </script>
 <!-- Cloudflare Web Analytics -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c02608684afe4b2799c74ca90261d2f7"}'></script>
